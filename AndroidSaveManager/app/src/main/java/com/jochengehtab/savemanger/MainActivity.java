@@ -1,6 +1,7 @@
 package com.jochengehtab.savemanger;
 
 import android.content.pm.ActivityInfo;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.widget.Button;
 
@@ -14,17 +15,12 @@ public class MainActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setContentView(R.layout.activity_main);
 
-        Button save = findViewById(R.id.save);
+        MusicPlayer musicPlayer = new MusicPlayer(getApplicationContext(), R.raw.alte_kameraden);
+
         Button load = findViewById(R.id.load);
 
-        SaveManger saveManger = new SaveManger(getApplicationContext());
-
-        save.setOnClickListener(v -> {
-            saveManger.load("sdhfhpaushfash");
-        });
-
         load.setOnClickListener(v -> {
-
+            musicPlayer.playMusic();
         });
     }
 }
