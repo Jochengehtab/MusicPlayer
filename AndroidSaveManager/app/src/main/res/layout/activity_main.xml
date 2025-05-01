@@ -69,4 +69,13 @@
         android:orientation="vertical"
         app:layout_constraintGuide_begin="205dp" />
 
+    <ListView
+        android:id="@+id/musicList"
+        android:layout_width="380dp"
+        android:layout_height="320dp"
+        app:layout_constraintEnd_toStartOf="@+id/guideline2"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="@+id/guideline3" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
