@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SaveManger</string>
+    <string name="app_name">Music Player</string>
     <string name="load">load</string>
     <string name="save">save</string>
 </resources>
