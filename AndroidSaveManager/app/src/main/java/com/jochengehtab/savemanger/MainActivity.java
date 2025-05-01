@@ -1,6 +1,7 @@
 package com.jochengehtab.savemanger;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Build;
@@ -23,16 +24,15 @@ import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String PREFS_NAME = "music_prefs";
+    private static final String KEY_TREE_URI = "tree_uri";
+
     private Uri musicDirectoryUri;
     private MusicPlayer musicPlayer;
     private ListView musicList;
 
-    // Launcher for “All files access” permission settings
     private ActivityResultLauncher<Intent> manageAllFilesLauncher;
-
-    // Launcher for SAF directory picker
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
-
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -46,7 +46,22 @@ public class MainActivity extends AppCompatActivity {
         musicList = findViewById(R.id.musicList);
         Button load = findViewById(R.id.load);
 
-        // 1) Register launcher for MANAGE_EXTERNAL_STORAGE settings
+        // 1) Load any previously saved tree URI
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedUriString = prefs.getString(KEY_TREE_URI, null);
+        if (savedUriString != null) {
+            Uri savedUri = Uri.parse(savedUriString);
+            // Re-take persistable permission on startup
+            getContentResolver().takePersistableUriPermission(
+                    savedUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+            musicDirectoryUri = savedUri;
+            // Directly load & play without picking again
+            loadAndPlayAllMusic();
+        }
+
+        // 2) Register for MANAGE_EXTERNAL_STORAGE settings result
         manageAllFilesLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -64,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // 2) Register launcher for ACTION_OPEN_DOCUMENT_TREE
+        // 3) Register for SAF folder picker result
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
@@ -75,22 +90,36 @@ public class MainActivity extends AppCompatActivity {
                                 Intent.FLAG_GRANT_READ_URI_PERMISSION
                         );
                         musicDirectoryUri = uri;
+
+                        // Save the URI string for next time
+                        prefs.edit()
+                                .putString(KEY_TREE_URI, uri.toString())
+                                .apply();
+
                         loadAndPlayAllMusic();
                     }
                 }
         );
 
-        // Wire up the button
-        load.setOnClickListener(v -> checkAndRequestManageAllFiles());
+        // 4) Wire up the button
+        load.setOnClickListener(v -> {
+            if (musicDirectoryUri == null) {
+                checkAndRequestManageAllFiles();
+            } else {
+                // Already have a folder — just reload in case contents changed
+                loadAndPlayAllMusic();
+            }
+        });
     }
+
 
     /**
      * Check for “All files access” (Android 11+); if missing, send user to Settings,
      * otherwise proceed to folder picker.
      */
     private void checkAndRequestManageAllFiles() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && !Environment.isExternalStorageManager()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                !Environment.isExternalStorageManager()) {
             Intent intent = new Intent(
                     Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                     Uri.parse("package:" + getPackageName())
@@ -109,9 +138,6 @@ public class MainActivity extends AppCompatActivity {
         pickDirectoryLauncher.launch(null);
     }
 
-    /**
-     * Enumerate audio files in the chosen folder and play them sequentially.
-     */
     private void loadAndPlayAllMusic() {
         if (musicDirectoryUri == null) return;
 
@@ -132,14 +158,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Display file names in the ListView
         musicList.setAdapter(
                 new ArrayAdapter<>(this,
                         android.R.layout.simple_list_item_1,
                         titles)
         );
 
-        // Start playback
         musicPlayer.setPlaylist(trackUris);
         musicPlayer.playMusic();
     }
