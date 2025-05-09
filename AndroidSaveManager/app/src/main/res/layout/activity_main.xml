@@ -35,20 +35,20 @@
         app:layout_constraintGuide_begin="715dp" />
 
     <Button
-        android:id="@+id/load"
+        android:id="@+id/play"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Play"
-        app:layout_constraintBottom_toTopOf="@+id/guideline4"
+        android:text="@string/play"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
         app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintStart_toStartOf="@+id/guideline6"
         app:layout_constraintTop_toTopOf="@+id/guideline3" />
 
     <Switch
         android:id="@+id/loop"
-        android:layout_width="99dp"
+        android:layout_width="100dp"
         android:layout_height="26dp"
-        android:text="Loop"
+        android:text="@string/loop"
         app:layout_constraintBottom_toTopOf="@+id/guideline4"
         app:layout_constraintEnd_toStartOf="@+id/guideline6"
         app:layout_constraintStart_toStartOf="@+id/guideline"
@@ -71,11 +71,31 @@
 
     <ListView
         android:id="@+id/musicList"
-        android:layout_width="380dp"
-        android:layout_height="320dp"
+        android:layout_width="385dp"
+        android:layout_height="257dp"
         app:layout_constraintEnd_toStartOf="@+id/guideline2"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/guideline3" />
+
+    <Button
+        android:id="@+id/choose"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/choose"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintEnd_toStartOf="@+id/guideline6"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="@+id/guideline3" />
+
+    <Button
+        android:id="@+id/mix"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/mix"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintEnd_toStartOf="@+id/guideline2"
+        app:layout_constraintStart_toStartOf="@+id/guideline6"
+        app:layout_constraintTop_toBottomOf="@+id/load" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

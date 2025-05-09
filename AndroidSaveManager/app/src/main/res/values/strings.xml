@@ -2,4 +2,8 @@
     <string name="app_name">Music Player</string>
     <string name="load">load</string>
     <string name="save">save</string>
+    <string name="choose">Choose</string>
+    <string name="loop">Loop</string>
+    <string name="play">Play</string>
+    <string name="mix">Mix</string>
 </resources>
