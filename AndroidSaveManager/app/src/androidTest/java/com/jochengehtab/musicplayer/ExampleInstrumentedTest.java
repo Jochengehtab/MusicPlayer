@@ -1,4 +1,4 @@
-package com.jochengehtab.savemanger;
+package com.jochengehtab.musicplayer;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 

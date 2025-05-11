@@ -1,4 +1,4 @@
-package com.jochengehtab.savemanger;
+package com.jochengehtab.musicplayer;
 
 import android.content.Intent;
 import android.content.SharedPreferences;

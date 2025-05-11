@@ -1,6 +1,4 @@
-package com.jochengehtab.savemanger;
-
-import static org.junit.Assert.*;
+package com.jochengehtab.musicplayer;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
