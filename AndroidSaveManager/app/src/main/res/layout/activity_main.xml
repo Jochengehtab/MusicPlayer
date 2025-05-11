@@ -7,7 +7,7 @@
     android:padding="16dp">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/musicRecycler"
+        android:id="@+id/musicList"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
@@ -51,6 +51,6 @@
         android:layout_height="wrap_content"
         android:text="@string/loop"
         app:layout_constraintStart_toEndOf="@+id/mix"
-        app:layout_constraintTop_toBottomOf="@id/musicRecycler" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

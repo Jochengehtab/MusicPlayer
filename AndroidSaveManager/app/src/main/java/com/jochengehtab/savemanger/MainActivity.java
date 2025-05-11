@@ -6,13 +6,13 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.Objects;
 
@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_TREE_URI = "tree_uri";
 
     private Uri musicDirectoryUri;
-    private ListView musicList;
+    private RecyclerView musicList;
     private FileManager fileManager;
     private MusicPlayer musicPlayer;
 
