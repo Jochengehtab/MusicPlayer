@@ -24,27 +24,49 @@ public class MainActivity extends AppCompatActivity {
     private ListView musicList;
     private FileManager fileManager;
     private MusicPlayer musicPlayer;
-    private MusicUtility musicUtility;
+
+    private SharedPreferences prefs;
 
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Hide action bar + lock orientation
+        // Hide action bar and lock the orientation
         Objects.requireNonNull(getSupportActionBar()).hide();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setContentView(R.layout.activity_main);
+
+        // Initialize the SharedPreferences
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         // Initialize GUI elements
         musicList = findViewById(R.id.musicList);
         Button chooseButton = findViewById(R.id.choose);
         Button playButton = findViewById(R.id.play);
 
-        musicUtility = new MusicUtility(this);
+        // Restore previously chosen folder (if any)
+        restorePreferences();
 
-        // 1) Restore previously chosen folder (if any)
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        // Register SAF folder picker launcher
+        initFolderChooser();
+
+        final MusicUtility musicUtility = new MusicUtility(this);
+        musicPlayer = new MusicPlayer(musicUtility);
+        fileManager = new FileManager(musicDirectoryUri, this);
+
+        // Load the uri and the title of the music files
+        fileManager.loadMusicFiles();
+
+        chooseButton.setOnClickListener(v -> launchDirectoryPicker());
+
+        playButton.setOnClickListener(v -> {
+            musicPlayer.playMix(fileManager.getTrackUris());
+        });
+    }
+
+    private void restorePreferences() {
+
         String savedUriString = prefs.getString(KEY_TREE_URI, null);
         if (savedUriString != null) {
             Uri savedUri = Uri.parse(savedUriString);
@@ -55,8 +77,9 @@ public class MainActivity extends AppCompatActivity {
             );
             musicDirectoryUri = savedUri;
         }
+    }
 
-        // 2) Register SAF folder picker launcher
+    private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
@@ -75,36 +98,13 @@ public class MainActivity extends AppCompatActivity {
 
                     } else {
                         Toast.makeText(
-                                this, "N o folder selected.", Toast.LENGTH_SHORT).show();
+                                this, "No folder selected.", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
-
-        fileManager = new FileManager(musicDirectoryUri, this);
-
-        fileManager.loadMusicFiles();
-
-        musicPlayer = new MusicPlayer(musicUtility);
-
-        chooseButton.setOnClickListener(v -> launchDirectoryPicker());
-        playButton.setOnClickListener(v -> {
-            musicPlayer.playMix(fileManager.getTrackUris());
-            System.out.println(fileManager.getTrackUris().size());
-        });
     }
 
-    /**
-     * Launch the Storage Access Framework folder picker.
-     */
     private void launchDirectoryPicker() {
         pickDirectoryLauncher.launch(null);
     }
-        /*
-        // Display file names in the ListView
-        musicList.setAdapter(
-                new ArrayAdapter<>(this,
-                        android.R.layout.simple_list_item_1,
-                        titles)
-        );
-         */
 }

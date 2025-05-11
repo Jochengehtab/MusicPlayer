@@ -36,7 +36,7 @@ public class MusicUtility {
     /**
      * Stop playback and release resources.
      */
-    public void stop() {
+    public void free() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.release();

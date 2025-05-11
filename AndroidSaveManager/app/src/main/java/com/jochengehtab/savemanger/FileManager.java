@@ -11,17 +11,22 @@ public class FileManager {
 
     private final ArrayList<Uri> trackUris = new ArrayList<>();
     private final ArrayList<String> titles = new ArrayList<>();
-    private Uri musicDirectoryUri;
-    private Context context;
+    private final Uri musicDirectoryUri;
+    private final Context context;
 
     public FileManager(Uri musicDirectoryUri, Context context) {
         this.musicDirectoryUri = musicDirectoryUri;
         this.context = context;
     }
 
+    public FileManager(Context context) {
+        this.musicDirectoryUri = null;
+        this.context = context;
+    }
+
     public void loadMusicFiles() {
 
-        // Check if we have at least one selected folder
+        // Check if we have one selected folder
         if (musicDirectoryUri == null) {
             return;
         }
