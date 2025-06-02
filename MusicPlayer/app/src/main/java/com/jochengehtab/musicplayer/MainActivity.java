@@ -20,24 +20,24 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String PREFS_NAME = "music_prefs";
+    private static final String PREFS_NAME   = "music_prefs";
     private static final String KEY_TREE_URI = "tree_uri";
 
     private Uri musicDirectoryUri;
     private RecyclerView musicList;
     private FileManager fileManager;
     private MusicPlayer musicPlayer;
+    private MusicUtility musicUtility;          // <— keep MusicUtility around
 
     private SharedPreferences prefs;
 
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
-    private ArrayList<Track> tracks = new ArrayList<>();
-    private TrackAdapter adapter; // RecyclerView adapter
+    private ArrayList<Track> tracks           = new ArrayList<>();
+    private TrackAdapter adapter;             // <— our RecyclerView adapter
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Hide action bar and lock orientation
         Objects.requireNonNull(getSupportActionBar()).hide();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setContentView(R.layout.activity_main);
@@ -46,57 +46,61 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         // 2) Find UI elements
-        musicList = findViewById(R.id.musicList);
+        musicList   = findViewById(R.id.musicList);
         MaterialButton chooseButton = findViewById(R.id.choose);
-        MaterialButton playButton = findViewById(R.id.play);
+        MaterialButton playButton   = findViewById(R.id.play);
 
-        // 3) Restore previously chosen folder (if any)
+        // 3) Restore saved folder URI (if any)
         restorePreferences();
 
         // 4) Register SAF folder picker
         initFolderChooser();
 
         // 5) Prepare MusicUtility and MusicPlayer
-        MusicUtility musicUtility = new MusicUtility(this);
-        musicPlayer = new MusicPlayer(musicUtility);
+        musicUtility = new MusicUtility(this);
+        musicPlayer  = new MusicPlayer(musicUtility);
 
-        // 6) Initialize FileManager (it internally uses musicDirectoryUri)
+        // 6) Initialize FileManager (using the restored URI or null)
         fileManager = new FileManager(musicDirectoryUri, this);
 
-        // 7) Load music files into 'tracks'
+        // 7) Load all music files into 'tracks'
         tracks = fileManager.loadMusicFiles();
 
-        // 8) Set up RecyclerView: LayoutManager + Adapter
-        //    - LinearLayoutManager (vertical list)
+        // 8) Set up RecyclerView
         musicList.setLayoutManager(new LinearLayoutManager(this));
-        //    - Adapter with our 'tracks' ArrayList
-        adapter = new TrackAdapter(tracks);
+
+        // When an item is clicked, play that track immediately
+        adapter = new TrackAdapter(
+                tracks,
+                track -> {
+                    // This runs on the main thread already. We just hand the URI
+                    // to MusicUtility.play(...) to begin playback of a single track.
+                    musicUtility.play(track.getUri());
+                }
+        );
         musicList.setAdapter(adapter);
 
-        // 9) Button click: “Choose” launches folder picker
+        // 9) “Choose” button launches the SAF folder picker
         chooseButton.setOnClickListener(v -> launchDirectoryPicker());
 
-        // 10) Button click: “Play” uses the currently loaded tracks
+        // 10) “Play” button reloads everything and then plays a random mix
         playButton.setOnClickListener(v -> {
-            // Always reload before playing, in case files changed
+            // Reload the track list in case files changed
             ArrayList<Track> freshList = fileManager.loadMusicFiles();
             tracks.clear();
             tracks.addAll(freshList);
             adapter.notifyDataSetChanged();
 
-            // Now play the mix
+            // Start the random‐mix thread
             musicPlayer.playMix(freshList);
         });
     }
 
-    /**
-     * Restore the last‐saved directory URI (if there was one).
-     */
+    /** Restore the last‐saved directory URI (if there was one). */
     private void restorePreferences() {
         String savedUriString = prefs.getString(KEY_TREE_URI, null);
         if (savedUriString != null) {
             Uri savedUri = Uri.parse(savedUriString);
-            // Re‐take URI permission on startup
             getContentResolver().takePersistableUriPermission(
                     savedUri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -105,9 +109,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Configure the SAF “OpenDocumentTree” launcher.
-     */
+    /** Configure the SAF “OpenDocumentTree” launcher. */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
@@ -120,20 +122,18 @@ public class MainActivity extends AppCompatActivity {
                         );
                         musicDirectoryUri = uri;
 
-                        // Save this URI for next app‐start
+                        // Save this URI for next app-start
                         prefs.edit()
                                 .putString(KEY_TREE_URI, uri.toString())
                                 .apply();
 
-                        // 1) Re-create FileManager with the new directory
+                        // Re-initialize FileManager with the new URI
                         fileManager = new FileManager(musicDirectoryUri, MainActivity.this);
 
-                        // 2) Reload tracks from the newly chosen folder
+                        // Reload tracks from the newly chosen folder
                         ArrayList<Track> newTracks = fileManager.loadMusicFiles();
                         tracks.clear();
                         tracks.addAll(newTracks);
-
-                        // 3) Tell RecyclerView’s adapter that data changed
                         adapter.notifyDataSetChanged();
                     } else {
                         Toast.makeText(
@@ -146,9 +146,7 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    /**
-     * Launch the SAF folder picker.
-     */
+    /** Launch the SAF folder picker. */
     private void launchDirectoryPicker() {
         pickDirectoryLauncher.launch(null);
     }

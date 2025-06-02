@@ -12,13 +12,24 @@ import java.util.ArrayList;
 
 /**
  * RecyclerView.Adapter that binds a list of Track objects into item_track.xml rows.
+ * Now with an OnItemClickListener so that tapping a row can be handled by the caller.
  */
 public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHolder> {
 
-    private final ArrayList<Track> tracks;
+    public interface OnItemClickListener {
+        void onItemClick(Track track);
+    }
 
-    public TrackAdapter(ArrayList<Track> tracks) {
+    private final ArrayList<Track> tracks;
+    private final OnItemClickListener listener;
+
+    /**
+     * @param tracks   the list of Track objects to display
+     * @param listener callback to invoke when a row is tapped
+     */
+    public TrackAdapter(ArrayList<Track> tracks, OnItemClickListener listener) {
         this.tracks = tracks;
+        this.listener = listener;
     }
 
     @NonNull
@@ -34,8 +45,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
     public void onBindViewHolder(@NonNull TrackViewHolder holder, int position) {
         Track current = tracks.get(position);
         holder.titleText.setText(current.getTitle());
-        // If you want click‐handling per‐item, you could do it here:
-        // holder.itemView.setOnClickListener(v -> { … });
+
+        // When this row is tapped, notify the listener, passing the Track object
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
     }
 
     @Override
@@ -43,9 +55,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         return tracks.size();
     }
 
-    /**
-     * Simple ViewHolder that holds a reference to the title TextView.
-     */
+    /** Simple ViewHolder that holds a reference to the title TextView. */
     static class TrackViewHolder extends RecyclerView.ViewHolder {
         final TextView titleText;
 
