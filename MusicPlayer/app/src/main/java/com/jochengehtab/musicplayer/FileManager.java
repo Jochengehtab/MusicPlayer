@@ -2,13 +2,14 @@ package com.jochengehtab.musicplayer;
 
 import android.content.Context;
 import android.net.Uri;
+
 import androidx.documentfile.provider.DocumentFile;
+
 import java.util.ArrayList;
-import java.util.List;
 
 public class FileManager {
-    private final Uri      musicDirectoryUri;
-    private final Context  context;
+    private final Uri musicDirectoryUri;
+    private final Context context;
 
     public FileManager(Uri musicDirectoryUri, Context context) {
         this.musicDirectoryUri = musicDirectoryUri;

@@ -43,9 +43,12 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         return tracks.size();
     }
 
-    /** Simple ViewHolder that holds a reference to the title TextView. */
+    /**
+     * Simple ViewHolder that holds a reference to the title TextView.
+     */
     static class TrackViewHolder extends RecyclerView.ViewHolder {
         final TextView titleText;
+
         TrackViewHolder(@NonNull View itemView) {
             super(itemView);
             titleText = itemView.findViewById(R.id.text_track_title);

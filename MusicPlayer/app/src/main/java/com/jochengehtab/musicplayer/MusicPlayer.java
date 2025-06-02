@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer;
 
-import android.net.Uri;
-
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -25,8 +23,7 @@ public class MusicPlayer {
                     musicUtility.play(musicFilesCopy.get(index).getUri());
 
                     musicFilesCopy.remove(index);
-                }
-                else {
+                } else {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {

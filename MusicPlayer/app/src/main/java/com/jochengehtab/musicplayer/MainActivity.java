@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String PREFS_NAME    = "music_prefs";
-    private static final String KEY_TREE_URI  = "tree_uri";
+    private static final String PREFS_NAME = "music_prefs";
+    private static final String KEY_TREE_URI = "tree_uri";
 
     private Uri musicDirectoryUri;
     private RecyclerView musicList;
@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
 
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
-    private ArrayList<Track> tracks     = new ArrayList<>();
+    private ArrayList<Track> tracks = new ArrayList<>();
     private TrackAdapter adapter; // RecyclerView adapter
 
     @Override
@@ -46,9 +46,9 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         // 2) Find UI elements
-        musicList   = findViewById(R.id.musicList);
+        musicList = findViewById(R.id.musicList);
         MaterialButton chooseButton = findViewById(R.id.choose);
-        MaterialButton playButton   = findViewById(R.id.play);
+        MaterialButton playButton = findViewById(R.id.play);
 
         // 3) Restore previously chosen folder (if any)
         restorePreferences();
@@ -89,7 +89,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** Restore the last‐saved directory URI (if there was one). */
+    /**
+     * Restore the last‐saved directory URI (if there was one).
+     */
     private void restorePreferences() {
         String savedUriString = prefs.getString(KEY_TREE_URI, null);
         if (savedUriString != null) {
@@ -103,7 +105,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** Configure the SAF “OpenDocumentTree” launcher. */
+    /**
+     * Configure the SAF “OpenDocumentTree” launcher.
+     */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
@@ -142,7 +146,9 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    /** Launch the SAF folder picker. */
+    /**
+     * Launch the SAF folder picker.
+     */
     private void launchDirectoryPicker() {
         pickDirectoryLauncher.launch(null);
     }

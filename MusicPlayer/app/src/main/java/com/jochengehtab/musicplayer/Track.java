@@ -8,7 +8,7 @@ public class Track {
     private final String title;
 
     public Track(Uri uri, String title) {
-        this.uri   = uri;
+        this.uri = uri;
         this.title = title;
     }
 

@@ -3,10 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.jochengehtab.musicplayer">
 
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <!-- Android 14+ Selected Photos Access permission -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
     <application
         android:allowBackup="true"
