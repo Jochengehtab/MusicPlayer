@@ -6,6 +6,44 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
+    <!-- ─── Button Row at the top ─── -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/play"
+        style="@style/App.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/play"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/choose"
+        style="@style/App.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/choose"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/play"
+        app:layout_constraintHorizontal_chainStyle="packed"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/mix"
+        style="@style/App.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/mix"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/choose"/>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/loop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/loop"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/mix"/>
+
+    <!-- ─── RecyclerView fills remaining space below the buttons ─── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/musicList"
         android:layout_width="0dp"
@@ -14,43 +52,9 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         app:layoutManager="LinearLayoutManager"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/play"
-        style="@style/App.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/play"
+        app:layout_constraintTop_toBottomOf="@id/play"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/choose"
-        style="@style/App.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/choose"
-        app:layout_constraintStart_toEndOf="@+id/play"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/mix"
-        style="@style/App.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/mix"
-        app:layout_constraintStart_toEndOf="@+id/choose"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/loop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/loop"
-        app:layout_constraintStart_toEndOf="@+id/mix"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

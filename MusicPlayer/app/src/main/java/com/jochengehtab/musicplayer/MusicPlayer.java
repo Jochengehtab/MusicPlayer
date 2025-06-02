@@ -14,15 +14,15 @@ public class MusicPlayer {
         this.musicUtility = musicUtility;
     }
 
-    public void playMix(ArrayList<Uri> musicFiles) {
-        ArrayList<Uri> musicFilesCopy = (ArrayList<Uri>) musicFiles.clone();
+    public void playMix(ArrayList<Track> musicFiles) {
+        ArrayList<Track> musicFilesCopy = (ArrayList<Track>) musicFiles.clone();
 
         new Thread(() -> {
             while (!musicFilesCopy.isEmpty()) {
                 if (canResume) {
                     int index = random.nextInt(musicFilesCopy.size());
 
-                    musicUtility.play(musicFilesCopy.get(index));
+                    musicUtility.play(musicFilesCopy.get(index).getUri());
 
                     musicFilesCopy.remove(index);
                 }

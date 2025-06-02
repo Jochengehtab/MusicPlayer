@@ -2,57 +2,42 @@ package com.jochengehtab.musicplayer;
 
 import android.content.Context;
 import android.net.Uri;
-
 import androidx.documentfile.provider.DocumentFile;
-
 import java.util.ArrayList;
+import java.util.List;
 
 public class FileManager {
-
-    private final ArrayList<Uri> trackUris = new ArrayList<>();
-    private final ArrayList<String> titles = new ArrayList<>();
-    private final Uri musicDirectoryUri;
-    private final Context context;
+    private final Uri      musicDirectoryUri;
+    private final Context  context;
 
     public FileManager(Uri musicDirectoryUri, Context context) {
         this.musicDirectoryUri = musicDirectoryUri;
         this.context = context;
     }
 
-    public FileManager(Context context) {
-        this.musicDirectoryUri = null;
-        this.context = context;
-    }
+    /**
+     * Scans the selected folder and returns a List of Tracks (uri + filename).
+     */
+    public ArrayList<Track> loadMusicFiles() {
+        ArrayList<Track> result = new ArrayList<>();
 
-    public void loadMusicFiles() {
-
-        // Check if we have one selected folder
         if (musicDirectoryUri == null) {
-            return;
+            return result;
         }
 
         DocumentFile pickedDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
         if (pickedDir == null || !pickedDir.isDirectory()) {
-            return;
+            return result;
         }
 
         for (DocumentFile file : pickedDir.listFiles()) {
             if (file.isFile()) {
                 String name = file.getName();
                 if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav"))) {
-                    trackUris.add(file.getUri());
-                    titles.add(name);
+                    result.add(new Track(file.getUri(), name));
                 }
             }
         }
+        return result;
     }
-
-    public ArrayList<Uri> getTrackUris() {
-        return trackUris;
-    }
-
-    public ArrayList<String> getTitles() {
-        return titles;
-    }
-
 }
