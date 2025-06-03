@@ -27,13 +27,13 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView musicList;
     private FileManager fileManager;
     private MusicPlayer musicPlayer;
-    private MusicUtility musicUtility;          // <— keep MusicUtility around
+    private MusicUtility musicUtility;          // keep MusicUtility around
 
     private SharedPreferences prefs;
 
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private ArrayList<Track> tracks           = new ArrayList<>();
-    private TrackAdapter adapter;             // <— our RecyclerView adapter
+    private TrackAdapter adapter;             // our RecyclerView adapter
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -68,14 +68,17 @@ public class MainActivity extends AppCompatActivity {
 
         // 8) Set up RecyclerView
         musicList.setLayoutManager(new LinearLayoutManager(this));
-
-        // When an item is clicked, play that track immediately
         adapter = new TrackAdapter(
                 tracks,
                 track -> {
-                    // This runs on the main thread already. We just hand the URI
-                    // to MusicUtility.play(...) to begin playback of a single track.
-                    musicUtility.play(track.getUri());
+                    // ⇦ Cancel any ongoing mix so single‐track play doesn’t overlap:
+                    musicPlayer.cancelMix();
+
+                    // ⇦ MusicUtility.play(...) now requires a listener. Since this is a single‐track
+                    // play, we can pass in an empty listener:
+                    musicUtility.play(track.getUri(), () -> {
+                        // No‐op on completion; you could update UI here if desired
+                    });
                 }
         );
         musicList.setAdapter(adapter);
@@ -91,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
             tracks.addAll(freshList);
             adapter.notifyDataSetChanged();
 
-            // Start the random‐mix thread
+            // ⇦ Start the random‐mix (this will cancel any previous mix internally)
             musicPlayer.playMix(freshList);
         });
     }
@@ -149,5 +152,12 @@ public class MainActivity extends AppCompatActivity {
     /** Launch the SAF folder picker. */
     private void launchDirectoryPicker() {
         pickDirectoryLauncher.launch(null);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // ⇦ Clean up any ongoing playback or mix when the Activity is destroyed:
+        musicPlayer.stopAndCancel();
     }
 }

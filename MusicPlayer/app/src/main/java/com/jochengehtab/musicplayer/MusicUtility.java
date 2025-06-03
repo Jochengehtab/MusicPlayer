@@ -10,33 +10,39 @@ public class MusicUtility {
     private final Context ctx;
     private MediaPlayer mediaPlayer;
 
+    public interface OnTrackCompleteListener {
+        void onTrackComplete();
+    }
+
     public MusicUtility(Context context) {
         this.ctx = context;
     }
 
-    public void play(Uri uri) {
-        // Release any existing player
+    /**
+     * Plays exactly one URI. As soon as that URI finishes, calls listener.onTrackComplete().
+     */
+    public void play(Uri uri, OnTrackCompleteListener listener) {
+        // Release any previous player
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
-        MusicPlayer.canResume = false;
-
+        // Create a fresh MediaPlayer
         mediaPlayer = new MediaPlayer();
         try {
-            // Set data source to content URI
             mediaPlayer.setDataSource(ctx, uri);
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
+            mediaPlayer.setOnCompletionListener(mp -> {
+                // When this track ends, notify the listener
+                listener.onTrackComplete();
+            });
             mediaPlayer.prepare();
-            mediaPlayer.setOnCompletionListener(mp -> MusicPlayer.canResume = true);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    /**
-     * Stop playback and release resources.
-     */
-    public void free() {
+    /** Stop & release immediately. */
+    public void stopAndRelease() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.release();
