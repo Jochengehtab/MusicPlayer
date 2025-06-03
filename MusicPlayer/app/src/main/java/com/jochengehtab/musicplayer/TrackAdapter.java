@@ -27,7 +27,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Context context;
     private final OnItemClickListener listener;
 
-    /** Backing list of Tracks; do not modify externally. */
+    /**
+     * Backing list of Tracks; do not modify externally.
+     */
     private final List<Track> tracks = new ArrayList<>();
 
     public TrackAdapter(

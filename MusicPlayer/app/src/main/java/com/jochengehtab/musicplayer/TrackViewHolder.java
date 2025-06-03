@@ -11,7 +11,7 @@ public class TrackViewHolder extends RecyclerView.ViewHolder {
     final TextView titleText;
     final ImageView overflowIcon;
 
-    TrackViewHolder(@NonNull View itemView) {
+    public TrackViewHolder(@NonNull View itemView) {
         super(itemView);
         titleText = itemView.findViewById(R.id.text_track_title);
         overflowIcon = itemView.findViewById(R.id.overflow_icon);

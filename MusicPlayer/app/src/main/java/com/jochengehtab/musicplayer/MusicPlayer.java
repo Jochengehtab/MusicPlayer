@@ -39,20 +39,17 @@ public class MusicPlayer {
      * If a previous mix is in progress, it’s canceled immediately.
      */
     public synchronized void playMix(List<Track> musicFiles) {
-        // Cancel any existing mix in progress:
+        // Cancel any existing mix in progress
         cancelToken.set(true);
 
-        // Build a fresh cancel token for the new mix:
+        // Build a fresh cancel token for the new mix
         cancelToken.set(false);
 
-        // Copy & shuffle:
         playQueue = new ArrayList<>(musicFiles);
         Collections.shuffle(playQueue, random);
 
-        // Start from index=0:
         currentIndex = 0;
 
-        // Play the first track:
         playNextInQueue();
     }
 
@@ -62,7 +59,7 @@ public class MusicPlayer {
      * will call this method again (with index+1).
      */
     private void playNextInQueue() {
-        // If canceled, or no more tracks, do nothing:
+        // If canceled, or no more tracks, do nothing
         if (cancelToken.get() || currentIndex >= playQueue.size()) {
             return;
         }
@@ -73,13 +70,13 @@ public class MusicPlayer {
         musicUtility.play(nextUri, () -> {
             // Called when this one URI finishes playing
             synchronized (MusicPlayer.this) {
-                // If someone canceled in the meantime, stop:
+                // If someone canceled in the meantime, stop
                 if (cancelToken.get()) {
                     return;
                 }
-                // Move to the next index:
+                // Move to the next index
                 currentIndex++;
-                // Recursively launch the next track:
+                // Recursively launch the next track
                 playNextInQueue();
             }
         });

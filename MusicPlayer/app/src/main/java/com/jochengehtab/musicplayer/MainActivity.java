@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String PREFS_NAME   = "music_prefs";
+    private static final String PREFS_NAME = "music_prefs";
     private static final String KEY_TREE_URI = "tree_uri";
 
     private Uri musicDirectoryUri;
@@ -45,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         // 2) Find UI elements
-        RecyclerView musicList    = findViewById(R.id.musicList);
+        RecyclerView musicList = findViewById(R.id.musicList);
         MaterialButton chooseButton = findViewById(R.id.choose);
-        MaterialButton playButton   = findViewById(R.id.play);
+        MaterialButton playButton = findViewById(R.id.play);
 
         // 3) Restore saved folder URI (if any)
         restorePreferences();
@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 5) Prepare MusicUtility and MusicPlayer
         musicUtility = new MusicUtility(this);
-        musicPlayer  = new MusicPlayer(musicUtility);
+        musicPlayer = new MusicPlayer(musicUtility);
 
         // 6) Initialize FileManager (using the restored URI or null)
         if (musicDirectoryUri != null) {
@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 initialTracks,
                 track -> {
-                    // Cancel any ongoing mix, then play this one track:
+                    // Cancel any ongoing mix, then play this one track
                     musicPlayer.cancelMix();
                     musicUtility.play(track.uri(), () -> { /* no-op */ });
                 }
@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 10) “Play” button reloads everything and then plays a random mix
         playButton.setOnClickListener(v -> {
-            // If no folder chosen yet, prompt user:
+            // If no folder chosen yet, prompt user
             if (musicDirectoryUri == null) {
                 Toast.makeText(
                         MainActivity.this,
@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Clean up any ongoing playback or mix when the Activity is destroyed:
+        // Clean up any ongoing playback or mix when the Activity is destroyed
         musicPlayer.stopAndCancel();
     }
 }
