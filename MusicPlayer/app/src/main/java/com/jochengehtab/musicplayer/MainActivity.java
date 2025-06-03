@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ⇦ Clean up any ongoing playback or mix when the Activity is destroyed:
+        // Clean up any ongoing playback or mix when the Activity is destroyed:
         musicPlayer.stopAndCancel();
     }
 }

@@ -6,4 +6,5 @@
     <string name="loop">Loop</string>
     <string name="play">Play</string>
     <string name="mix">Mix</string>
+    <string name="track_title">Track Title</string>
 </resources>

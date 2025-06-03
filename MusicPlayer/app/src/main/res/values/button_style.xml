@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <resources>
-    <!-- Base style for all outlined buttons -->
+    <!-- Updated outlined‐button style with a thicker blue outline -->
     <style name="App.OutlinedButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
-        <!-- Text color -->
-        <item name="android:textColor">@android:color/black</item>
+        <!-- White text on dark background -->
+        <item name="android:textColor">#FFFFFF</item>
 
-        <!-- Outline stroke -->
-        <item name="strokeColor">@android:color/black</item>
-        <item name="strokeWidth">1dp</item>
+        <!-- Thicker blue outline stroke (3dp instead of 1dp) -->
+        <item name="strokeColor">#2196F3</item>
+        <item name="strokeWidth">3dp</item>
 
-        <!-- Ripple on press -->
-        <item name="rippleColor">#1F000000</item>
+        <!-- Transparent fill so only the outline is visible -->
+        <item name="android:backgroundTint">@android:color/transparent</item>
+
+        <!-- Subtle blue ripple on press -->
+        <item name="rippleColor">#1F2196F3</item>
     </style>
 </resources>
