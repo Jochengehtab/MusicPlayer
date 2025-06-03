@@ -41,7 +41,9 @@ public class MusicUtility {
         }
     }
 
-    /** Stop & release immediately. */
+    /**
+     * Stop & release immediately.
+     */
     public void stopAndRelease() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();

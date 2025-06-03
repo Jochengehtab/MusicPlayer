@@ -34,7 +34,7 @@ public class FileManager {
         for (DocumentFile file : pickedDir.listFiles()) {
             if (file.isFile()) {
                 String name = file.getName();
-                if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav"))) {
+                if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a"))) {
                     result.add(new Track(file.getUri(), name));
                 }
             }

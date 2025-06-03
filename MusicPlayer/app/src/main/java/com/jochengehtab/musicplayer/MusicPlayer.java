@@ -20,10 +20,14 @@ public class MusicPlayer {
      */
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
 
-    /** The queue of Tracks to play, in shuffled order. */
+    /**
+     * The queue of Tracks to play, in shuffled order.
+     */
     private List<Track> playQueue = new ArrayList<>();
 
-    /** Index of the next track inside playQueue. */
+    /**
+     * Index of the next track inside playQueue.
+     */
     private int currentIndex = 0;
 
     public MusicPlayer(MusicUtility musicUtility) {

@@ -25,17 +25,17 @@
         android:maxLines="1"
         />
 
-    <!-- Three-dot overflow menu icon -->
     <ImageView
         android:id="@+id/overflow_icon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:contentDescription="@string/track_options"
         android:src="@drawable/ic_more_vert_white_24dp"
+        android:contentDescription="@string/track_options"
         android:clickable="true"
         android:focusable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
