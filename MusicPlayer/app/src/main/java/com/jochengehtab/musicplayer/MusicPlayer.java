@@ -63,7 +63,7 @@ public class MusicPlayer {
             return;
         }
 
-        Uri nextUri = playQueue.get(currentIndex).getUri();
+        Uri nextUri = playQueue.get(currentIndex).uri();
 
         // Pass in a listener that advances currentIndex and calls playNextInQueue()
         musicUtility.play(nextUri, () -> {

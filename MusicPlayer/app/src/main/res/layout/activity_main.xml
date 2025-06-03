@@ -5,9 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:background="#121212">  <!-- Dark grey background -->
+    android:background="#121212">
 
-    <!-- ─── Button Row at the top ─── -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/play"
         style="@style/App.OutlinedButton"
@@ -45,7 +44,6 @@
         app:layout_constraintStart_toEndOf="@id/mix"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- ─── RecyclerView fills remaining space below the buttons ─── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/musicList"
         android:layout_width="0dp"

@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
                     // ⇦ MusicUtility.play(...) now requires a listener. Since this is a single‐track
                     // play, we can pass in an empty listener:
-                    musicUtility.play(track.getUri(), () -> {
+                    musicUtility.play(track.uri(), () -> {
                         // No‐op on completion; you could update UI here if desired
                     });
                 }

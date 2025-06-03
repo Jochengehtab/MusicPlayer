@@ -44,7 +44,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
     @Override
     public void onBindViewHolder(@NonNull TrackViewHolder holder, int position) {
         Track current = tracks.get(position);
-        holder.titleText.setText(current.getTitle());
+        holder.titleText.setText(current.title());
 
         // When this row is tapped, notify the listener, passing the Track object
         holder.itemView.setOnClickListener(v -> listener.onItemClick(current));

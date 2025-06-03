@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="blue_accent">#2196F3</color>
     <color name="ripple_blue_translucent">#1F2196F3</color>
 
     <style name="App.OutlinedButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/white</item>
-        <item name="strokeColor">@color/blue_accent</item>
+        <item name="strokeColor">@color/stroke_color</item>
         <item name="strokeWidth">2dp</item>
         <item name="android:backgroundTint">@android:color/transparent</item>
         <item name="rippleColor">@color/ripple_blue_translucent</item>
