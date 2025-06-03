@@ -1,9 +1,14 @@
 package com.jochengehtab.musicplayer;
 
+import android.content.Context;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -11,8 +16,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 
 /**
- * RecyclerView.Adapter that binds a list of Track objects into item_track.xml rows.
- * Now with an OnItemClickListener so that tapping a row can be handled by the caller.
+ * RecyclerView.Adapter that binds a list of Track objects into item_track.xml rows,
+ * showing a three‐dot overflow menu for each item.
  */
 public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHolder> {
 
@@ -22,12 +27,10 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
 
     private final ArrayList<Track> tracks;
     private final OnItemClickListener listener;
+    private final Context context;
 
-    /**
-     * @param tracks   the list of Track objects to display
-     * @param listener callback to invoke when a row is tapped
-     */
-    public TrackAdapter(ArrayList<Track> tracks, OnItemClickListener listener) {
+    public TrackAdapter(Context context, ArrayList<Track> tracks, OnItemClickListener listener) {
+        this.context = context;
         this.tracks = tracks;
         this.listener = listener;
     }
@@ -46,8 +49,32 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         Track current = tracks.get(position);
         holder.titleText.setText(current.title());
 
-        // When this row is tapped, notify the listener, passing the Track object
+        // 1) Row click = play the track
         holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
+
+        // 2) Overflow icon click = show PopupMenu
+        holder.overflowIcon.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(context, holder.overflowIcon);
+            popup.inflate(R.menu.track_item_menu);
+            popup.setOnMenuItemClickListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.action_add_favorite) {
+                    // Example: show a toast; replace with real logic
+                    Toast.makeText(context,
+                            "Added \"" + current.title() + "\" to Favorites",
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+                } else if (id == R.id.action_delete) {
+                    // Example: show a toast; replace with real deletion logic
+                    Toast.makeText(context,
+                            "Deleted \"" + current.title() + "\"",
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
     }
 
     @Override
@@ -55,13 +82,14 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackAdapter.TrackViewHol
         return tracks.size();
     }
 
-    /** Simple ViewHolder that holds a reference to the title TextView. */
     static class TrackViewHolder extends RecyclerView.ViewHolder {
         final TextView titleText;
+        final ImageView overflowIcon;
 
         TrackViewHolder(@NonNull View itemView) {
             super(itemView);
             titleText = itemView.findViewById(R.id.text_track_title);
+            overflowIcon = itemView.findViewById(R.id.overflow_icon);
         }
     }
 }

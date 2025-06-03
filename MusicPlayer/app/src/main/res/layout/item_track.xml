@@ -9,6 +9,7 @@
     android:focusable="true"
     android:padding="12dp">
 
+    <!-- Track title, pushed to start -->
     <TextView
         android:id="@+id/text_track_title"
         android:layout_width="0dp"
@@ -17,6 +18,22 @@
         android:textSize="16sp"
         android:textColor="@color/white"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/overflow_icon"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:ellipsize="end"
+        android:maxLines="1"
+        />
+
+    <!-- Three-dot overflow menu icon -->
+    <ImageView
+        android:id="@+id/overflow_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@string/track_options"
+        android:src="@drawable/ic_more_vert_white_24dp"
+        android:clickable="true"
+        android:focusable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />

@@ -69,18 +69,17 @@ public class MainActivity extends AppCompatActivity {
         // 8) Set up RecyclerView
         musicList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new TrackAdapter(
+                this,         // Context
                 tracks,
                 track -> {
-                    // ⇦ Cancel any ongoing mix so single‐track play doesn’t overlap:
+                    // Cancel any ongoing mix, then play this one track:
                     musicPlayer.cancelMix();
-
-                    // ⇦ MusicUtility.play(...) now requires a listener. Since this is a single‐track
-                    // play, we can pass in an empty listener:
                     musicUtility.play(track.uri(), () -> {
-                        // No‐op on completion; you could update UI here if desired
+                        // no-op on completion
                     });
                 }
         );
+
         musicList.setAdapter(adapter);
 
         // 9) “Choose” button launches the SAF folder picker
