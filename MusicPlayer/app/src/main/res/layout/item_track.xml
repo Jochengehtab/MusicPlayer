@@ -3,12 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
     android:background="@drawable/item_track_background"
     android:clickable="true"
     android:focusable="true"
-    android:padding="12dp">
+    android:padding="8dp">
 
-    <!-- Track title, pushed to start -->
     <TextView
         android:id="@+id/text_track_title"
         android:layout_width="0dp"
@@ -34,6 +34,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

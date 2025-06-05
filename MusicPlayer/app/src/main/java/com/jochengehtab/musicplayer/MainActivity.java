@@ -114,10 +114,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Use DiffUtil‐based update instead of notifyDataSetChanged()
             adapter.updateList(freshList);
-
-            // Start the random‐mix
             musicPlayer.playMix(freshList);
         });
     }

@@ -1,6 +1,7 @@
 package com.jochengehtab.musicplayer;
 
 import android.content.Context;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,10 +27,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
     private final Context context;
     private final OnItemClickListener listener;
-
-    /**
-     * Backing list of Tracks; do not modify externally.
-     */
     private final List<Track> tracks = new ArrayList<>();
 
     public TrackAdapter(
@@ -55,7 +52,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         Track current = tracks.get(position);
         holder.titleText.setText(current.title());
 
-        // 1) Row click = play the track via listener
+        // 1) Row click = play the track
         holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
 
         // 2) Overflow icon click = show PopupMenu
@@ -65,20 +62,66 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
-                if (id == R.id.action_add_favorite) {
-                    Toast.makeText(context,
-                            "Added \"" + current.title() + "\" to Favorites",
-                            Toast.LENGTH_SHORT).show();
+
+                if (id == R.id.action_rename) {
+                    // === Rename logic using DocumentsContract.renameDocument ===
+                    androidx.appcompat.app.AlertDialog.Builder builder =
+                            new androidx.appcompat.app.AlertDialog.Builder(context);
+                    builder.setTitle("Edit Track Title");
+
+                    // Split base name and extension
+                    String fullName = current.title();
+                    int dotIndex = fullName.lastIndexOf('.');
+                    String baseName = (dotIndex >= 0) ? fullName.substring(0, dotIndex) : fullName;
+                    String extension = (dotIndex >= 0) ? fullName.substring(dotIndex) : "";
+
+                    final android.widget.EditText input = new android.widget.EditText(context);
+                    input.setText(baseName);
+                    input.setSelection(baseName.length());
+                    builder.setView(input);
+
+                    builder.setPositiveButton("OK", (dialog, which) -> {
+                        String newBaseName = input.getText().toString().trim();
+                        if (!newBaseName.isEmpty() && !newBaseName.equals(baseName)) {
+                            String newFullName = newBaseName + extension;
+
+                            // Use DocumentsContract.renameDocument(...) instead of renameTo(...)
+                            try {
+                                Uri newUri = android.provider.DocumentsContract.renameDocument(
+                                        context.getContentResolver(),
+                                        current.uri(),
+                                        newFullName
+                                );
+                                if (newUri != null) {
+                                    // Successful rename: update adapter’s list
+                                    Track renamedTrack = new Track(newUri, newFullName);
+                                    List<Track> updatedList = new ArrayList<>(tracks);
+                                    updatedList.set(position, renamedTrack);
+                                    updateList(updatedList);
+                                } else {
+                                    Toast.makeText(context,
+                                            "Rename failed.",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (Exception e) {
+                                Toast.makeText(context,
+                                        "Error renaming: " + e.getMessage(),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        dialog.dismiss();
+                    });
+
+                    builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+                    androidx.appcompat.app.AlertDialog dialog = builder.create();
+                    dialog.show();
+
                     return true;
-                } else if (id == R.id.action_delete) {
-                    Toast.makeText(context,
-                            "Deleted \"" + current.title() + "\"",
-                            Toast.LENGTH_SHORT).show();
-                    return true;
+                } else if (id == R.id.edit) {
+
                 }
                 return false;
             });
-
             popup.show();
         });
     }
