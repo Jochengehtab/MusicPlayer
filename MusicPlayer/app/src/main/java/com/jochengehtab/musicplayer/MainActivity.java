@@ -30,7 +30,6 @@ public class MainActivity extends AppCompatActivity {
     private MusicUtility musicUtility;
 
     private SharedPreferences prefs;
-
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
 
@@ -64,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
             fileManager = new FileManager(musicDirectoryUri, this);
         }
 
-        // 7) Load all music files into an initial list (might be empty)
+        // 7) Load all music files into initial list (might be empty)
         List<Track> initialTracks = new ArrayList<>();
         if (fileManager != null) {
             initialTracks = fileManager.loadMusicFiles();
@@ -76,14 +75,15 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 initialTracks,
                 track -> {
-                    // Cancel any ongoing mix, then play this one track
+                    // Cancel any ongoing mix, then play full track:
                     musicPlayer.cancelMix();
-                    musicUtility.play(track.uri(), () -> { /* no-op */ });
-                }
+                    musicUtility.play(track.uri());
+                },
+                musicUtility  // needed for playSegment(...)
         );
         musicList.setAdapter(adapter);
 
-        // If no folder was restored, prompt the user to choose one immediately
+        // If no folder was restored, prompt the user to choose one
         if (musicDirectoryUri == null) {
             Toast.makeText(this, "Please choose a music folder first.", Toast.LENGTH_SHORT).show();
         }
@@ -93,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
 
         // 10) “Play” button reloads everything and then plays a random mix
         playButton.setOnClickListener(v -> {
-            // If no folder chosen yet, prompt user
             if (musicDirectoryUri == null) {
                 Toast.makeText(
                         MainActivity.this,
@@ -102,8 +101,6 @@ public class MainActivity extends AppCompatActivity {
                 ).show();
                 return;
             }
-
-            // Reload the track list in case files changed
             List<Track> freshList = fileManager.loadMusicFiles();
             if (freshList.isEmpty()) {
                 Toast.makeText(
@@ -113,14 +110,13 @@ public class MainActivity extends AppCompatActivity {
                 ).show();
                 return;
             }
-
             adapter.updateList(freshList);
             musicPlayer.playMix(freshList);
         });
     }
 
     /**
-     * Restore the last‐saved directory URI (if there was one).
+     * Restore last‐saved directory URI (if any).
      */
     private void restorePreferences() {
         String savedUriString = prefs.getString(KEY_TREE_URI, null);
@@ -135,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Configure the SAF “OpenDocumentTree” launcher.
+     * Configure SAF “OpenDocumentTree” launcher.
      */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
@@ -159,15 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
                         // Reload tracks from the newly chosen folder
                         List<Track> newTracks = fileManager.loadMusicFiles();
-                        if (newTracks.isEmpty()) {
-                            Toast.makeText(
-                                    MainActivity.this,
-                                    "No music files found in selected folder.",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                        }
                         adapter.updateList(newTracks);
-
                     } else {
                         Toast.makeText(
                                 MainActivity.this,
@@ -189,7 +177,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Clean up any ongoing playback or mix when the Activity is destroyed
         musicPlayer.stopAndCancel();
     }
 }
