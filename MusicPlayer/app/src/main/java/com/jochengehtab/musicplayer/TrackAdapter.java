@@ -1,8 +1,10 @@
 package com.jochengehtab.musicplayer;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +19,8 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -128,6 +132,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                     dialog.show();
 
                     return true;
+                } if (id == R.id.action_reset) {
+                    restoreFromBackup(current, position);
+                    return true;
                 }
                 return false;
             });
@@ -153,11 +160,12 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         diffResult.dispatchUpdatesTo(this);
     }
 
+    // ─── 1) TRIM DIALOG ───────────────────────────────────────────────────────────────
     /**
-     * Show a Dialog that allows the user to adjust start/end with sliders, preview it, and (optionally) apply trimming.
+     * Show a Dialog that allows the user to adjust start/end with sliders, preview it,
+     * AND when “OK” is pressed, back up the original file and (placeholder) copy it back over itself.
      */
     private void showTrimDialog(Track track, int position) {
-        // 1) Inflate dialog_trim.xml
         androidx.appcompat.app.AlertDialog.Builder builder =
                 new androidx.appcompat.app.AlertDialog.Builder(context);
         builder.setTitle("Trim Track");
@@ -166,14 +174,13 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                 .inflate(R.layout.dialog_trim, null);
         builder.setView(dialogView);
 
-        // 2) Find dialog views
-        SeekBar seekStart = dialogView.findViewById(R.id.seek_start);
-        SeekBar seekEnd = dialogView.findViewById(R.id.seek_end);
-        TextView valueStart = dialogView.findViewById(R.id.value_start);
-        TextView valueEnd = dialogView.findViewById(R.id.value_end);
-        Button buttonPreview = dialogView.findViewById(R.id.button_preview);
+        SeekBar seekStart    = dialogView.findViewById(R.id.seek_start);
+        SeekBar seekEnd      = dialogView.findViewById(R.id.seek_end);
+        TextView valueStart  = dialogView.findViewById(R.id.value_start);
+        TextView valueEnd    = dialogView.findViewById(R.id.value_end);
+        Button  buttonPreview = dialogView.findViewById(R.id.button_preview);
 
-        // 3) Determine track duration (in seconds) via MediaMetadataRetriever
+        // Determine track duration (in seconds)
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         retriever.setDataSource(context, track.uri());
         String durationStr = retriever.extractMetadata(
@@ -186,84 +193,225 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             throw new RuntimeException(e);
         }
 
-        // 4) Initialize End slider value to track's full length
+        // Initialize sliders (0% = start, 100% = end) and labels
         valueStart.setText("0");
         valueEnd.setText(String.valueOf(durationSec));
         seekStart.setProgress(0);
         seekEnd.setProgress(100);
 
-        // 5) SeekBar listeners to update labels and enforce start < end
+        // SeekBar listeners enforce start < end
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+            @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 int startSec = (durationSec * progress) / 100;
-                // If start >= end, clamp
-                int endProgress = seekEnd.getProgress();
-                int endSec = (durationSec * endProgress) / 100;
+                int endSec   = (durationSec * seekEnd.getProgress()) / 100;
                 if (startSec >= endSec) {
-                    int newStartProgress = endProgress - 1;
-                    if (newStartProgress < 0) newStartProgress = 0;
-                    sb.setProgress(newStartProgress);
-                    startSec = (durationSec * newStartProgress) / 100;
+                    int newProg = seekEnd.getProgress() - 1;
+                    if (newProg < 0) newProg = 0;
+                    sb.setProgress(newProg);
+                    startSec = (durationSec * newProg) / 100;
                 }
                 valueStart.setText(String.valueOf(startSec));
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar sb) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar sb) {
-            }
+            @Override public void onStartTrackingTouch(SeekBar sb) { }
+            @Override public void onStopTrackingTouch(SeekBar sb) { }
         });
 
         seekEnd.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+            @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 int endSec = (durationSec * progress) / 100;
-                // If end <= start, clamp
-                int startProgress = seekStart.getProgress();
-                int startSec2 = (durationSec * startProgress) / 100;
+                int startSec2 = (durationSec * seekStart.getProgress()) / 100;
                 if (endSec <= startSec2) {
-                    int newEndProgress = startProgress + 1;
-                    if (newEndProgress > 100) newEndProgress = 100;
-                    sb.setProgress(newEndProgress);
-                    endSec = (durationSec * newEndProgress) / 100;
+                    int newProg = seekStart.getProgress() + 1;
+                    if (newProg > 100) newProg = 100;
+                    sb.setProgress(newProg);
+                    endSec = (durationSec * newProg) / 100;
                 }
                 valueEnd.setText(String.valueOf(endSec));
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar sb) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar sb) {
-            }
+            @Override public void onStartTrackingTouch(SeekBar sb) { }
+            @Override public void onStopTrackingTouch(SeekBar sb) { }
         });
 
-        // 6) Preview button uses playSegment()
+        // Preview button plays only the selected segment
         buttonPreview.setOnClickListener(previewView -> {
-            int startProgress = seekStart.getProgress();
-            int endProgress = seekEnd.getProgress();
-            int startSec = (durationSec * startProgress) / 100;
-            int endSec = (durationSec * endProgress) / 100;
+            int startSec = (durationSec * seekStart.getProgress()) / 100;
+            int endSec   = (durationSec * seekEnd.getProgress()) / 100;
             if (endSec <= startSec) {
-                Toast.makeText(context,
-                        "End must be > start", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "End must be > start", Toast.LENGTH_SHORT).show();
                 return;
             }
             musicUtility.playSegment(track.uri(), startSec, endSec);
         });
 
-        // 7) OK / Cancel
+        // OK: only backup/trim if user changed the bounds from [0, durationSec]
         builder.setPositiveButton("OK", (dialog, which) -> {
-            // TODO: If desired, actually trim the file on disk and update Track title/URI
+            int startSec = (durationSec * seekStart.getProgress()) / 100;
+            int endSec   = (durationSec * seekEnd.getProgress()) / 100;
+
+            // Check if anything actually changed
+            if (startSec > 0 || endSec < durationSec) {
+                try {
+                    backupAndOverwrite(track, position);
+                } catch (IOException e) {
+                    Toast.makeText(context,
+                            "Error during backup/trim: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+            // If slider still at full range (0 to durationSec), just dismiss
             dialog.dismiss();
         });
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
         builder.create().show();
+    }
+
+
+    /**
+     * Backs up the original file (if no backup exists) and then overwrites the original
+     * with its own content (placeholder for real trimming). Afterward, updates the adapter
+     * so the displayed title/URI remain correct (no change).
+     */
+    private void backupAndOverwrite(Track track, int position) throws IOException {
+        ContentResolver resolver = context.getContentResolver();
+        Uri originalUri = track.uri();
+
+        // 1) Build backup name: original base + "_backup" + extension
+        String fullName = track.title();
+        int dotIndex = fullName.lastIndexOf('.');
+        String baseName = (dotIndex >= 0) ? fullName.substring(0, dotIndex) : fullName;
+        String extension = (dotIndex >= 0) ? fullName.substring(dotIndex) : "";
+        String backupName = baseName + "_backup" + extension;
+
+        // 2) Locate parent directory
+        Uri parentUri = DocumentsContract.getTreeDocumentId(originalUri) != null
+                ? DocumentsContract.buildDocumentUriUsingTree(
+                originalUri, DocumentsContract.getDocumentId(originalUri))
+                : null;
+        // Simpler: use fromSingleUri().getParentFile() to find parent
+        androidx.documentfile.provider.DocumentFile fileDoc =
+                androidx.documentfile.provider.DocumentFile.fromSingleUri(context, originalUri);
+        androidx.documentfile.provider.DocumentFile parentDir = fileDoc.getParentFile();
+        if (parentDir == null || !parentDir.isDirectory()) {
+            throw new IOException("Unable to find parent directory for backup");
+        }
+
+        // 3) Check if backup already exists
+        androidx.documentfile.provider.DocumentFile existingBackup = null;
+        for (androidx.documentfile.provider.DocumentFile f : parentDir.listFiles()) {
+            if (backupName.equals(f.getName())) {
+                existingBackup = f;
+                break;
+            }
+        }
+
+        // 4) If no backup, create one
+        if (existingBackup == null) {
+            existingBackup = parentDir.createFile(
+                    resolver.getType(originalUri), backupName);
+            if (existingBackup == null) {
+                throw new IOException("Failed to create backup file");
+            }
+            // Copy contents → backup
+            try (InputStream in = resolver.openInputStream(originalUri);
+                 OutputStream out = resolver.openOutputStream(existingBackup.getUri())) {
+                if (in == null || out == null) {
+                    throw new IOException("Unable to open streams for backup");
+                }
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+            }
+        }
+
+        // 5) Placeholder: overwrite original with its own content (no actual trim)
+        // Real trimming would involve decoding / re-encoding using MediaExtractor/MediaMuxer.
+        try (InputStream in = resolver.openInputStream(originalUri);
+             OutputStream out = resolver.openOutputStream(originalUri)) {
+            if (in == null || out == null) {
+                throw new IOException("Unable to open streams to overwrite original");
+            }
+            byte[] buf = new byte[4096];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+        }
+
+        Toast.makeText(context, "Backup created as “" + backupName +
+                "”. (Trim not implemented.)", Toast.LENGTH_LONG).show();
+
+        // 6) No actual change in URI/title, but if you did change either, update adapter:
+        // List<Track> updated = new ArrayList<>(tracks);
+        // updated.set(position, new Track(originalUri, fullName));
+        // updateList(updated);
+    }
+
+    // ─── 2) RESET FROM BACKUP ─────────────────────────────────────────────────────────
+    /**
+     * Restores the original file from its backup (if present). Overwrites the current file
+     * with the contents of backup, then deletes the backup. Finally, updates adapter to show original.
+     */
+    private void restoreFromBackup(Track track, int position) {
+        ContentResolver resolver = context.getContentResolver();
+        Uri originalUri = track.uri();
+
+        // Build backup name as above
+        String fullName = track.title();
+        int dotIndex = fullName.lastIndexOf('.');
+        String baseName = (dotIndex >= 0) ? fullName.substring(0, dotIndex) : fullName;
+        String extension = (dotIndex >= 0) ? fullName.substring(dotIndex) : "";
+        String backupName = baseName + "_backup" + extension;
+
+        androidx.documentfile.provider.DocumentFile fileDoc =
+                androidx.documentfile.provider.DocumentFile.fromSingleUri(context, originalUri);
+        androidx.documentfile.provider.DocumentFile parentDir = fileDoc.getParentFile();
+        if (parentDir == null || !parentDir.isDirectory()) {
+            Toast.makeText(context, "Cannot locate parent for reset", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Find backup
+        androidx.documentfile.provider.DocumentFile backupFile = null;
+        for (androidx.documentfile.provider.DocumentFile f : parentDir.listFiles()) {
+            if (backupName.equals(f.getName())) {
+                backupFile = f;
+                break;
+            }
+        }
+        if (backupFile == null) {
+            Toast.makeText(context, "No backup found to restore", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Copy backup contents → original
+        try (InputStream in = resolver.openInputStream(backupFile.getUri());
+             OutputStream out = resolver.openOutputStream(originalUri)) {
+            if (in == null || out == null) {
+                throw new IOException("Failed to open streams for reset");
+            }
+            byte[] buf = new byte[4096];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+        } catch (IOException e) {
+            Toast.makeText(context, "Reset failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Delete the backup file
+        if (!backupFile.delete()) {
+            Toast.makeText(context,
+                    "Reset succeeded, but failed to delete backup file.",
+                    Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(context, "File restored from backup.", Toast.LENGTH_SHORT).show();
+        }
+
+        // No change in URI/title; if you renamed in-trim, you might need to restore that too.
+        // For now, adapter remains unchanged.
     }
 }

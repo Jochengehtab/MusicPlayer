@@ -10,5 +10,6 @@
     <string name="edit">Edit</string>
     <string name="rename">Rename</string>
     <string name="track_options">Track Options</string>
+    <string name="reset">Reset</string>
 
 </resources>

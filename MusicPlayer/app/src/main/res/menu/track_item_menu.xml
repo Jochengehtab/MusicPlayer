@@ -10,5 +10,8 @@
         android:id="@+id/action_rename"
         android:title="@string/rename"
         android:icon="@drawable/ic_delete_white_24dp" />
-
+    <!-- Reset option -->
+    <item
+        android:id="@+id/action_reset"
+        android:title="@string/reset" />
 </menu>
