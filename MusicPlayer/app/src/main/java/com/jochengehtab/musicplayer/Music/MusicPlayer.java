@@ -1,6 +1,8 @@
-package com.jochengehtab.musicplayer;
+package com.jochengehtab.musicplayer.Music;
 
 import android.net.Uri;
+
+import com.jochengehtab.musicplayer.MusicList.Track;
 
 import java.util.ArrayList;
 import java.util.Collections;

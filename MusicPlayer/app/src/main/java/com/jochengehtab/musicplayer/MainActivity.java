@@ -15,14 +15,19 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.jochengehtab.musicplayer.FileManager.FileManager;
+import com.jochengehtab.musicplayer.Music.MusicPlayer;
+import com.jochengehtab.musicplayer.Music.MusicUtility;
+import com.jochengehtab.musicplayer.MusicList.Track;
+import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String PREFS_NAME = "music_prefs";
-    private static final String KEY_TREE_URI = "tree_uri";
+    public static final String PREFS_NAME = "music_prefs";
+    public static final String KEY_TREE_URI = "tree_uri";
 
     private Uri musicDirectoryUri;
     private FileManager fileManager;

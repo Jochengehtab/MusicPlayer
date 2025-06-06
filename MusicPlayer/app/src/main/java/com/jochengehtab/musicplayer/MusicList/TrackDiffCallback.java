@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer;
+package com.jochengehtab.musicplayer.MusicList;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;

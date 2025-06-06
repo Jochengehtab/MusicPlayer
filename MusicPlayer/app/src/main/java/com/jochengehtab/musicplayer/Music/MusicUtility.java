@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer;
+package com.jochengehtab.musicplayer.Music;
 
 import android.content.Context;
 import android.media.MediaPlayer;

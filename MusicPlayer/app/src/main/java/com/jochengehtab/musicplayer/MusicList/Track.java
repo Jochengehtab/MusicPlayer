@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer;
+package com.jochengehtab.musicplayer.MusicList;
 
 
 import android.net.Uri;
