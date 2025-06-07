@@ -1,6 +1,5 @@
 package com.jochengehtab.musicplayer.MusicList;
 
-import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import android.view.LayoutInflater;
@@ -17,12 +16,8 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Options.Trim;
 import com.jochengehtab.musicplayer.R;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * RecyclerView.Adapter that binds a list of Track records into item_track.xml rows,
@@ -127,8 +122,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                     dialog.show();
 
                     return true;
-                } if (id == R.id.action_reset) {
-                    restoreFromBackup(current, position);
+                }
+                // TODO
+                if (id == R.id.action_reset) {
                     return true;
                 }
                 return false;
@@ -153,70 +149,5 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.tracks.clear();
         this.tracks.addAll(newList);
         diffResult.dispatchUpdatesTo(this);
-    }
-
-    /**
-     * Restores the original file from its backup (if present). Overwrites the current file
-     * with the contents of backup, then deletes the backup. Finally, updates adapter to show original.
-     */
-    private void restoreFromBackup(Track track, int position) {
-        ContentResolver resolver = context.getContentResolver();
-        Uri originalUri = track.uri();
-
-        // Build backup name as above
-        String fullName = track.title();
-        int dotIndex = fullName.lastIndexOf('.');
-        String baseName = (dotIndex >= 0) ? fullName.substring(0, dotIndex) : fullName;
-        String extension = (dotIndex >= 0) ? fullName.substring(dotIndex) : "";
-        String backupName = baseName + "_backup" + extension;
-
-        androidx.documentfile.provider.DocumentFile fileDoc =
-                androidx.documentfile.provider.DocumentFile.fromSingleUri(context, originalUri);
-        androidx.documentfile.provider.DocumentFile parentDir = Objects.requireNonNull(fileDoc).getParentFile();
-        if (parentDir == null || !parentDir.isDirectory()) {
-            Toast.makeText(context, "Cannot locate parent for reset", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Find backup
-        androidx.documentfile.provider.DocumentFile backupFile = null;
-        for (androidx.documentfile.provider.DocumentFile f : parentDir.listFiles()) {
-            if (backupName.equals(f.getName())) {
-                backupFile = f;
-                break;
-            }
-        }
-        if (backupFile == null) {
-            Toast.makeText(context, "No backup found to restore", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Copy backup contents → original
-        try (InputStream in = resolver.openInputStream(backupFile.getUri());
-             OutputStream out = resolver.openOutputStream(originalUri)) {
-            if (in == null || out == null) {
-                throw new IOException("Failed to open streams for reset");
-            }
-            byte[] buf = new byte[4096];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-        } catch (IOException e) {
-            Toast.makeText(context, "Reset failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        // Delete the backup file
-        if (!backupFile.delete()) {
-            Toast.makeText(context,
-                    "Reset succeeded, but failed to delete backup file.",
-                    Toast.LENGTH_LONG).show();
-        } else {
-            Toast.makeText(context, "File restored from backup.", Toast.LENGTH_SHORT).show();
-        }
-
-        // No change in URI/title; if you renamed in-trim, you might need to restore that too.
-        // For now, adapter remains unchanged.
     }
 }
