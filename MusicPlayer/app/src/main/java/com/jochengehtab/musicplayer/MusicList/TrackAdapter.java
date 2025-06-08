@@ -66,7 +66,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.edit) {
-                    trim.showTrimDialog(current, position);
+                    trim.showTrimDialog(current);
                     return true;
                 } else if (id == R.id.action_rename) {
                     // === Rename logic using DocumentsContract.renameDocument ===

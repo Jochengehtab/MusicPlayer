@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -16,22 +15,21 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
-import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
+import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
-    private static JSON json;
+    public static JSON json;
 
     private Uri musicDirectoryUri;
     private FileManager fileManager;
@@ -65,14 +63,13 @@ public class MainActivity extends AppCompatActivity {
 
         json = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
 
-
         // 5) Prepare MusicUtility and MusicPlayer
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
 
         // 6) Initialize FileManager (using the restored URI or null)
         if (musicDirectoryUri != null) {
-            fileManager = new FileManager(musicDirectoryUri, this);
+            fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
         }
 
         // 7) Load all music files into initial list (might be empty)
@@ -87,11 +84,10 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 initialTracks,
                 track -> {
-                    // Cancel any ongoing mix, then play full track:
                     musicPlayer.cancelMix();
                     musicUtility.play(track.uri());
                 },
-                musicUtility  // needed for playSegment(...)
+                musicUtility
         );
         musicList.setAdapter(adapter);
 
@@ -163,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
                                 .apply();
 
                         // Re‐initialize FileManager with the new URI
-                        fileManager = new FileManager(musicDirectoryUri, MainActivity.this);
+                        fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
 
                         // Reload tracks from the newly chosen folder
                         List<Track> newTracks = fileManager.loadMusicFiles();

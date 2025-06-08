@@ -1,8 +1,9 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
+import static com.jochengehtab.musicplayer.MainActivity.json;
+
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.view.LayoutInflater;
@@ -18,6 +19,7 @@ import com.jochengehtab.musicplayer.MainActivity;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
+import com.jochengehtab.musicplayer.Utility.FileManager;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -37,7 +39,7 @@ public class Trim {
      * Show a Dialog that allows the user to adjust start/end with sliders, preview it,
      * AND when “OK” is pressed, back up the original file and (placeholder) copy it back over itself.
      */
-    public void showTrimDialog(Track track, int position) {
+    public void showTrimDialog(Track track) {
         androidx.appcompat.app.AlertDialog.Builder builder =
                 new androidx.appcompat.app.AlertDialog.Builder(context);
         builder.setTitle("Trim Track");
@@ -52,30 +54,16 @@ public class Trim {
         TextView valueEnd = dialogView.findViewById(R.id.value_end);
         Button buttonPreview = dialogView.findViewById(R.id.button_preview);
 
-        int durationMs;
-        // Determine track duration in seconds
-        try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
-            retriever.setDataSource(context, track.uri());
-            String durationStr = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION);
-            durationMs = Integer.parseInt(Objects.requireNonNull(durationStr));
-            try {
-                retriever.release();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Integer[] timestamps = json.readArray(FileManager.getUriHash(track.uri()), Integer[].class);
+        assert timestamps.length > 1;
 
-        final int durationSec = durationMs / 1000;
+        final int durationSec = timestamps[1];
 
         // Initialize sliders and labels
-        // 0 = start, 100 = end
-        valueStart.setText("0");
-        valueEnd.setText(String.valueOf(durationSec));
-        seekStart.setProgress(0);
-        seekEnd.setProgress(100);
+        valueStart.setText(timestamps[0]);
+        valueEnd.setText(timestamps[1]);
+        seekStart.setProgress(timestamps[0]);
+        seekEnd.setProgress(timestamps[1]);
 
         // SeekBar listeners enforce start < end
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -143,7 +131,9 @@ public class Trim {
             // Check if anything actually changed
             if (startSec > 0 || endSec < durationSec) {
                 try {
-                    backupAndOverwrite(track, position);
+                    backupAndOverwrite(track);
+                    int[] timestamps2 = {startSec, endSec};
+                    json.write(FileManager.getUriHash(track.uri()), timestamps2);
                 } catch (IOException e) {
                     Toast.makeText(context,
                             "Error during backup/trim: " + e.getMessage(),
@@ -158,7 +148,7 @@ public class Trim {
         builder.create().show();
     }
 
-    private void backupAndOverwrite(Track track, int position) throws IOException {
+    private void backupAndOverwrite(Track track) throws IOException {
         // Use the same PREFS_NAME and KEY_TREE_URI that MainActivity uses
         SharedPreferences prefs =
                 context.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);

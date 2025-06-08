@@ -1,23 +1,25 @@
 package com.jochengehtab.musicplayer.Music;
 
+import static com.jochengehtab.musicplayer.MainActivity.json;
+
 import android.content.Context;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 
+import com.jochengehtab.musicplayer.Utility.FileManager;
+
 import java.io.IOException;
+import java.util.Objects;
 
 public class MusicUtility {
-    private final Context ctx;
+    private final Context context;
     private MediaPlayer mediaPlayer;
     private final Handler handler;
 
-    public interface OnTrackCompleteListener {
-        void onTrackComplete();
-    }
-
     public MusicUtility(Context context) {
-        this.ctx = context;
+        this.context = context;
         this.handler = new Handler();
     }
 
@@ -28,9 +30,15 @@ public class MusicUtility {
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
+        Integer[] timestamps = json.readArray(FileManager.getUriHash(uri), Integer[].class);
+
+        if (timestamps.length > 1) {
+            playSegment(uri, timestamps[0], timestamps[1]);
+            return;
+        }
         mediaPlayer = new MediaPlayer();
         try {
-            mediaPlayer.setDataSource(ctx, uri);
+            mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
             mediaPlayer.setOnCompletionListener(mp -> { /* no-op */ });
             mediaPlayer.prepare();
@@ -46,9 +54,16 @@ public class MusicUtility {
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
+
+        Integer[] timestamps = json.readArray(FileManager.getUriHash(uri), Integer[].class);
+
+        if (timestamps.length > 1) {
+            playSegment(uri, timestamps[0], timestamps[1]);
+            return;
+        }
         mediaPlayer = new MediaPlayer();
         try {
-            mediaPlayer.setDataSource(ctx, uri);
+            mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
             mediaPlayer.setOnCompletionListener(mp -> listener.onTrackComplete());
             mediaPlayer.prepare();
@@ -68,7 +83,7 @@ public class MusicUtility {
         }
         mediaPlayer = new MediaPlayer();
         try {
-            mediaPlayer.setDataSource(ctx, uri);
+            mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startSec * 1000));
             mediaPlayer.setOnSeekCompleteListener(mp -> {
                 mp.start();
@@ -83,6 +98,26 @@ public class MusicUtility {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public int getTrackDuration(Uri uri) {
+        int durationMs;
+        // Determine track duration in seconds
+        try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
+            retriever.setDataSource(context, uri);
+            String durationStr = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION);
+            durationMs = Integer.parseInt(Objects.requireNonNull(durationStr));
+            try {
+                retriever.release();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return durationMs / 1000;
     }
 
     /**

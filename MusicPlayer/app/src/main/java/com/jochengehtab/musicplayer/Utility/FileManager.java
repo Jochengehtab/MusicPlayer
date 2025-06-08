@@ -1,25 +1,32 @@
 package com.jochengehtab.musicplayer.Utility;
 
+import static com.jochengehtab.musicplayer.MainActivity.json;
+
 import android.content.Context;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 
 import androidx.documentfile.provider.DocumentFile;
 
+import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.UUID;
 
 public class FileManager {
     private final Uri musicDirectoryUri;
     private final Context context;
+    private final MusicUtility musicUtility;
 
-    public FileManager(Uri musicDirectoryUri, Context context) {
+    public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
         this.musicDirectoryUri = musicDirectoryUri;
         this.context = context;
+        this.musicUtility = musicUtility;
+    }
+
+    public static String getUriHash(Uri uri) {
+        return UUID.nameUUIDFromBytes(uri.toString().getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     /**
@@ -41,23 +48,10 @@ public class FileManager {
             if (file.isFile()) {
                 String name = file.getName();
                 if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a"))) {
-                    int durationMs;
-                    // Determine track duration in seconds
-                    try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
-                        retriever.setDataSource(context, file.getUri());
-                        String durationStr = retriever.extractMetadata(
-                                MediaMetadataRetriever.METADATA_KEY_DURATION);
-                        durationMs = Integer.parseInt(Objects.requireNonNull(durationStr));
-                        try {
-                            retriever.release();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                    if (json.read(getUriHash(file.getUri()), Integer[].class) == null) {
+                        int[] timestamps = {0, musicUtility.getTrackDuration(file.getUri())};
+                        json.write(getUriHash(file.getUri()), timestamps);
                     }
-
-                    final int durationSec = durationMs / 1000;
                     result.add(new Track(file.getUri(), name));
                 }
             }
