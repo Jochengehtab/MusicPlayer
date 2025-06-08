@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.Music;
 
-import static com.jochengehtab.musicplayer.MainActivity.json;
+import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
 
 import android.content.Context;
 import android.media.MediaMetadataRetriever;
@@ -30,7 +30,7 @@ public class MusicUtility {
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
-        Integer[] timestamps = json.readArray(FileManager.getUriHash(uri), Integer[].class);
+        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(uri), Integer[].class);
 
         if (timestamps.length > 1) {
             playSegment(uri, timestamps[0], timestamps[1]);
@@ -55,7 +55,7 @@ public class MusicUtility {
             mediaPlayer.release();
         }
 
-        Integer[] timestamps = json.readArray(FileManager.getUriHash(uri), Integer[].class);
+        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(uri), Integer[].class);
 
         if (timestamps.length > 1) {
             playSegment(uri, timestamps[0], timestamps[1]);

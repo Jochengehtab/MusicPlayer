@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
-import static com.jochengehtab.musicplayer.MainActivity.json;
+import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -54,14 +54,14 @@ public class Trim {
         TextView valueEnd = dialogView.findViewById(R.id.value_end);
         Button buttonPreview = dialogView.findViewById(R.id.button_preview);
 
-        Integer[] timestamps = json.readArray(FileManager.getUriHash(track.uri()), Integer[].class);
+        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(track.uri()), Integer[].class);
         assert timestamps.length > 1;
 
         final int durationSec = timestamps[1];
 
         // Initialize sliders and labels
-        valueStart.setText(timestamps[0]);
-        valueEnd.setText(timestamps[1]);
+        valueStart.setText(String.valueOf(timestamps[0]));
+        valueEnd.setText(String.valueOf(timestamps[1]));
         seekStart.setProgress(timestamps[0]);
         seekEnd.setProgress(timestamps[1]);
 
@@ -133,7 +133,7 @@ public class Trim {
                 try {
                     backupAndOverwrite(track);
                     int[] timestamps2 = {startSec, endSec};
-                    json.write(FileManager.getUriHash(track.uri()), timestamps2);
+                    timestampsConfig.write(FileManager.getUriHash(track.uri()), timestamps2);
                 } catch (IOException e) {
                     Toast.makeText(context,
                             "Error during backup/trim: " + e.getMessage(),

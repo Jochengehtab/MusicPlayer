@@ -29,7 +29,7 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
-    public static JSON json;
+    public static JSON timestampsConfig;
 
     private Uri musicDirectoryUri;
     private FileManager fileManager;
@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         // 4) Register SAF folder picker
         initFolderChooser();
 
-        json = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+        timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
 
         // 5) Prepare MusicUtility and MusicPlayer
         musicUtility = new MusicUtility(this);
