@@ -53,30 +53,6 @@ public class MusicUtility {
     }
 
     /**
-     * Play the entire track from start to finish, no callback.
-     */
-    public void play(Uri uri) {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-        }
-        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(uri), Integer[].class);
-
-        if (timestamps.length > 1) {
-            playSegment(uri, timestamps[0], timestamps[1]);
-            return;
-        }
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(MediaPlayer::start);
-            mediaPlayer.setOnCompletionListener(mp -> { /* no-op */ });
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
      * Play the entire track but notify listener when it finishes.
      */
     public void play(Uri uri, OnTrackCompleteListener listener) {
