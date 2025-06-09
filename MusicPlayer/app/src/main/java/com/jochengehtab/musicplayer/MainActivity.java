@@ -63,8 +63,19 @@ public class MainActivity extends AppCompatActivity {
         // 3) SAF folder picker
         initFolderChooser();
 
-        // 4) JSON config
-        timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+        // Now check if we already have a saved URI:
+        if (musicDirectoryUri != null) {
+            // 1) Only now build your JSON backed by that tree
+            timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+
+            // 2) Build your FileManager
+            fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
+
+            // 3) Load & show tracks
+            loadAndShowTracks();
+        } else {
+            Toast.makeText(this,"Please choose a music folder.",Toast.LENGTH_SHORT).show();
+        }
 
         // 5) MusicUtility + MusicPlayer
         musicUtility = new MusicUtility(this);
@@ -186,24 +197,26 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Configure SAF folder picker
-     */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
                     if (uri != null) {
+                        // Persist and save the URI
                         getContentResolver().takePersistableUriPermission(
                                 uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                         );
-                        musicDirectoryUri = uri;
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
+                        musicDirectoryUri = uri;
 
-                        fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
+                        // Now initialize JSON and FileManager
+                        timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+                        fileManager = new FileManager(uri, this, musicUtility);
+
+                        // And reload the list
                         loadAndShowTracks();
                     } else {
-                        Toast.makeText(this, "No folder selected.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this,"No folder selected.",Toast.LENGTH_SHORT).show();
                     }
                 }
         );
