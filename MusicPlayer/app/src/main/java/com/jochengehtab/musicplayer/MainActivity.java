@@ -14,10 +14,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.view.menu.MenuBuilder;
-import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -30,8 +27,6 @@ import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -145,37 +140,53 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton bottomOptions = findViewById(R.id.bottom_options);
         bottomOptions.setOnClickListener(v -> {
-            // 1) Build a CharSequence[] from resources
-            CharSequence[] items = getResources().getTextArray(R.array.playback_options);
+            PopupMenu popup = new PopupMenu(this, bottomOptions);
+            popup.inflate(R.menu.bottom_bar_menu);
 
-            // 2) Determine which item is currently selected (or -1)
-            int checkedItem = musicPlayer.isLooping() ? 0
-                    : musicPlayer.isMixing() ? 1
+            // 1) Tell the group to be single‐choice
+            popup.getMenu().setGroupCheckable(
+                    R.id.group_playback_modes,
+                    true,
+                    true
+            );
+
+            // 2) Pre‐check the currently active mode, if any
+            int checkedId = musicPlayer.isLooping()
+                    ? R.id.action_loop
+                    : musicPlayer.isMixing()
+                    ? R.id.action_mix
                     : -1;
 
-            // 3) Build the dialog
-            new AlertDialog.Builder(this)
-                    .setTitle("Playback Mode")
-                    .setSingleChoiceItems(items, checkedItem, (dialog, which) -> {
-                        // Called when the user taps an option
-                        dialog.dismiss();
-                        if (which == 0) {
-                            // Loop selected
-                            boolean looping = musicPlayer.toggleLoop();
-                            Toast.makeText(this,
-                                    looping ? "Loop ON" : "Loop OFF",
-                                    Toast.LENGTH_SHORT).show();
-                        } else if (which == 1) {
-                            // Mix selected
-                            if (fileManager != null) {
-                                // enable mix mode and start mix
-                                musicPlayer.playMix(fileManager.loadMusicFiles());
-                                Toast.makeText(this, "Mix started", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
+            if (checkedId != -1) {
+                popup.getMenu().findItem(checkedId).setChecked(true);
+            }
+
+            // 3) Handle selections
+            popup.setOnMenuItemClickListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.action_loop) {
+                    boolean looping = musicPlayer.toggleLoop();
+                    // uncheck the other
+                    popup.getMenu().findItem(R.id.action_mix).setChecked(false);
+                    item.setChecked(looping);
+                    Toast.makeText(this,
+                            looping ? "Loop ON" : "Loop OFF",
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+
+                } else if (id == R.id.action_mix) {
+                    if (fileManager != null) {
+                        musicPlayer.playMix(fileManager.loadMusicFiles());
+                    }
+                    popup.getMenu().findItem(R.id.action_loop).setChecked(false);
+                    item.setChecked(true);
+                    Toast.makeText(this, "Mix started", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            });
+
+            popup.show();
         });
     }
 

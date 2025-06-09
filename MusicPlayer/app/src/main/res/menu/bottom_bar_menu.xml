@@ -1,14 +1,14 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-    <item
-        android:id="@+id/action_loop"
-        android:title="Loop"
-        android:icon="@null"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_mix"
-        android:title="Mix"
-        android:icon="@null"
-        app:showAsAction="never" />
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group
+        android:id="@+id/group_playback_modes"
+        android:checkableBehavior="single">   <!-- single → radio-style -->
+        <item
+            android:id="@+id/action_loop"
+            android:checkable="true"
+            android:title="Loop" />
+        <item
+            android:id="@+id/action_mix"
+            android:checkable="true"
+            android:title="Mix" />
+    </group>
 </menu>
-
