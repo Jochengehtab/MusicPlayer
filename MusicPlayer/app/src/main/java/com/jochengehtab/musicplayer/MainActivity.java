@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         // 2) Find UI elements
         RecyclerView musicList = findViewById(R.id.musicList);
         MaterialButton chooseButton = findViewById(R.id.choose);
-        MaterialButton playButton = findViewById(R.id.play);
+        MaterialButton mix = findViewById(R.id.mix);
 
         // 3) Restore saved folder URI (if any)
         restorePreferences();
@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         chooseButton.setOnClickListener(v -> launchDirectoryPicker());
 
         // 10) “Play” button reloads everything and then plays a random mix
-        playButton.setOnClickListener(v -> {
+        mix.setOnClickListener(v -> {
             if (musicDirectoryUri == null) {
                 Toast.makeText(
                         MainActivity.this,
