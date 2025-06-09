@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isPlaying = false;
     private boolean isPaused = false;
-    private Track lastTrack;  // the track to re‐play / stop
+    private Track lastTrack;  // the track to re-play / stop
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -57,69 +57,60 @@ public class MainActivity extends AppCompatActivity {
         // 1) SharedPreferences
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
-        // 2) Restore folder URI
+        // 2) Restore any saved folder URI
         restorePreferences();
 
-        // 3) SAF folder picker
-        initFolderChooser();
-
-        // Now check if we already have a saved URI:
-        if (musicDirectoryUri != null) {
-            // 1) Only now build your JSON backed by that tree
-            timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-
-            // 2) Build your FileManager
-            fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
-
-            // 3) Load & show tracks
-            loadAndShowTracks();
-        } else {
-            Toast.makeText(this,"Please choose a music folder.",Toast.LENGTH_SHORT).show();
-        }
-
-        // 5) MusicUtility + MusicPlayer
+        // 3) Prepare MusicUtility & MusicPlayer
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
 
-        // 6) FileManager if URI exists
-        if (musicDirectoryUri != null) {
-            fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
-        }
+        // 4) Set up SAF folder picker (but do not load yet)
+        initFolderChooser();
 
-        // 7) UI refs
+        // 5) RecyclerView + empty adapter
         RecyclerView musicList = findViewById(R.id.musicList);
+        musicList.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new TrackAdapter(
+                this,
+                new ArrayList<>(),
+                track -> {
+                    // placeholder until we wire bottom bar
+                },
+                musicUtility
+        );
+        musicList.setAdapter(adapter);
+
+        // 6) UI refs for bottom bar and buttons
         MaterialButton chooseBtn = findViewById(R.id.choose);
         MaterialButton mixBtn = findViewById(R.id.mix);
         ImageButton bottomPlay = findViewById(R.id.bottom_play);
         TextView bottomTitle = findViewById(R.id.bottom_title);
 
-        // 8) Define playbackListener BEFORE adapter creation
-        OnPlaybackStateListener playbackListener =
-                new OnPlaybackStateListener() {
-                    @Override
-                    public void onPlaybackStarted() {
-                        runOnUiThread(() -> {
-                            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                            isPlaying = true;
-                            isPaused = false;
-                        });
-                    }
+        // 7) Playback listener
+        OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
+            @Override
+            public void onPlaybackStarted() {
+                runOnUiThread(() -> {
+                    bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+                    isPlaying = true;
+                    isPaused = false;
+                });
+            }
 
-                    @Override
-                    public void onPlaybackStopped() {
-                        runOnUiThread(() -> {
-                            bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-                            isPlaying = false;
-                            isPaused = false;
-                        });
-                    }
-                };
+            @Override
+            public void onPlaybackStopped() {
+                runOnUiThread(() -> {
+                    bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+                    isPlaying = false;
+                    isPaused = false;
+                });
+            }
+        };
 
-        // 9) RecyclerView + empty adapter
-        musicList.setLayoutManager(new LinearLayoutManager(this));
+        // 8) Re-set adapter click logic now that playbackListener exists
         adapter = new TrackAdapter(
                 this,
-                new ArrayList<>(),  // start empty
+                new ArrayList<>(),
                 track -> {
                     musicPlayer.cancelMix();
                     lastTrack = track;
@@ -130,30 +121,29 @@ public class MainActivity extends AppCompatActivity {
         );
         musicList.setAdapter(adapter);
 
-        // 10) If folder exists, load initial tracks
+        // 9) If a folder was restored, now initialize JSON, FileManager, and load
         if (musicDirectoryUri != null) {
+            timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
             fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
             loadAndShowTracks();
         } else {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
-        // 11) Choose button
-        chooseBtn.setOnClickListener(v -> launchDirectoryPicker());
+        // 10) Choose button launches picker
+        chooseBtn.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
-        // 12) Mix button
+        // 11) Mix button reloads & plays mix
         mixBtn.setOnClickListener(v -> {
             if (musicDirectoryUri == null) {
-                Toast.makeText(this,
-                        "No folder selected. Please choose one first.",
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Choose a folder first.", Toast.LENGTH_SHORT).show();
                 return;
             }
             loadAndShowTracks();
             musicPlayer.playMix(fileManager.loadMusicFiles());
         });
 
-        // 13) Bottom play/pause/resume toggle
+        // 12) Bottom bar play/pause/resume
         bottomPlay.setOnClickListener(v -> {
             if (lastTrack == null) {
                 Toast.makeText(this, "No track selected.", Toast.LENGTH_SHORT).show();
@@ -183,9 +173,7 @@ public class MainActivity extends AppCompatActivity {
         adapter.updateList(tracks);
     }
 
-    /**
-     * Restore saved folder URI
-     */
+    /** Restore saved folder URI */
     private void restorePreferences() {
         String uriStr = prefs.getString(KEY_TREE_URI, null);
         if (uriStr != null) {
@@ -197,36 +185,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Configure SAF folder picker */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
                     if (uri != null) {
-                        // Persist and save the URI
                         getContentResolver().takePersistableUriPermission(
                                 uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                         );
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
                         musicDirectoryUri = uri;
 
-                        // Now initialize JSON and FileManager
-                        timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-                        fileManager = new FileManager(uri, this, musicUtility);
-
-                        // And reload the list
+                        // Initialize JSON & FileManager *after* picking
+                        timestampsConfig = new JSON(
+                                MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json"
+                        );
+                        fileManager = new FileManager(
+                                musicDirectoryUri, MainActivity.this, musicUtility
+                        );
                         loadAndShowTracks();
                     } else {
-                        Toast.makeText(this,"No folder selected.",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "No folder selected.", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
-    }
-
-    /**
-     * Launch folder picker
-     */
-    private void launchDirectoryPicker() {
-        pickDirectoryLauncher.launch(null);
     }
 
     @Override
