@@ -83,13 +83,13 @@ public class MusicUtility {
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startSec * 1000));
-            mediaPlayer.setOnSeekCompleteListener(mp -> {
-                mp.start();
+            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));
+            mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
+                mediaPlayer.start();
                 int durationMs = (endSec - startSec) * 1000;
                 handler.postDelayed(() -> {
-                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                        mediaPlayer.pause();
+                    if (this.mediaPlayer != null && this.mediaPlayer.isPlaying()) {
+                        this.mediaPlayer.pause();
                     }
                 }, durationMs);
             });
@@ -104,14 +104,9 @@ public class MusicUtility {
         // Determine track duration in seconds
         try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
             retriever.setDataSource(context, uri);
-            String durationStr = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION);
-            durationMs = Integer.parseInt(Objects.requireNonNull(durationStr));
-            try {
-                retriever.release();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            durationMs = Integer.parseInt(Objects.requireNonNull(retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION)));
+            retriever.release();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
