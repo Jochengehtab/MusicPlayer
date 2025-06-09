@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -25,6 +27,7 @@ import com.jochengehtab.musicplayer.Utility.JSON;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
@@ -39,6 +42,9 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
+
+    private boolean isPlaying = false;
+    private Track lastTrack;  // the track to re‐play / stop
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -120,6 +126,70 @@ public class MainActivity extends AppCompatActivity {
             }
             adapter.updateList(freshList);
             musicPlayer.playMix(freshList);
+        });
+
+        // 11) Mini‐player views
+        ImageButton bottomPlay  = findViewById(R.id.bottom_play);
+        TextView bottomTitle = findViewById(R.id.bottom_title);
+        AtomicBoolean isPaused = new AtomicBoolean(false);
+
+        // 1) Define playback state listener to sync icon when a track finishes or starts
+        MusicUtility.OnPlaybackStateListener playbackStateListener =
+                new MusicUtility.OnPlaybackStateListener() {
+                    @Override
+                    public void onPlaybackStarted() {
+                        runOnUiThread(() -> {
+                            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+                            isPlaying = true;
+                            isPaused.set(false);
+                        });
+                    }
+                    @Override
+                    public void onPlaybackStopped() {
+                        runOnUiThread(() -> {
+                            bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+                            isPlaying = false;
+                            isPaused.set(false);
+                        });
+                    }
+                };
+
+        // 2) Adapter’s OnItemClickListener now uses the new play(...) overload
+        adapter = new TrackAdapter(
+                this, initialTracks,
+                track -> {
+                    // Cancel mix and play this track from start
+                    musicPlayer.cancelMix();
+                    lastTrack = track;
+                    bottomTitle.setText(track.title());
+                    musicUtility.play(track.uri(), playbackStateListener);
+                },
+                musicUtility
+        );
+        musicList.setAdapter(adapter);
+
+        // 3) Bottom button toggles play / pause / resume
+        bottomPlay.setOnClickListener(v -> {
+            if (lastTrack == null) {
+                Toast.makeText(this, "No track selected.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (isPlaying) {
+                // Currently playing → pause
+                musicUtility.pause();
+                bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+                isPaused.set(true);
+                isPlaying = false;
+            } else if (isPaused.get()) {
+                // Paused mid‐track → resume
+                musicUtility.resume();
+                bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+                isPaused.set(false);
+                isPlaying = true;
+            } else {
+                // Neither playing nor paused: start from beginning
+                musicUtility.play(lastTrack.uri(), playbackStateListener);
+            }
         });
     }
 

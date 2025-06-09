@@ -7,6 +7,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.Looper;
 
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
@@ -16,11 +17,39 @@ import java.util.Objects;
 public class MusicUtility {
     private final Context context;
     private MediaPlayer mediaPlayer;
-    private final Handler handler;
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     public MusicUtility(Context context) {
         this.context = context;
-        this.handler = new Handler();
+    }
+
+    public interface OnPlaybackStateListener {
+        void onPlaybackStarted();
+        void onPlaybackStopped();
+    }
+
+    /**
+     * Play the entire track, notifying the listener when start/stop occur.
+     */
+
+    // TODO unify this two play functions into one so that the trim option also works
+    public void play(Uri uri, OnPlaybackStateListener listener) {
+        // Release any existing player
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
+        mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(context, uri);
+            mediaPlayer.setOnPreparedListener(mp -> {
+                mp.start();
+                listener.onPlaybackStarted();
+            });
+            mediaPlayer.setOnCompletionListener(mp -> listener.onPlaybackStopped());
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -118,6 +147,19 @@ public class MusicUtility {
         }
 
         return durationMs / 1000;
+    }
+
+    public void pause() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
+
+    /** Resume if paused. */
+    public void resume() {
+        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+            mediaPlayer.start();
+        }
     }
 
     /**
