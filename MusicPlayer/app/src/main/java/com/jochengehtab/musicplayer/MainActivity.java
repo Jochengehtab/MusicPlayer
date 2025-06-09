@@ -173,7 +173,9 @@ public class MainActivity extends AppCompatActivity {
         adapter.updateList(tracks);
     }
 
-    /** Restore saved folder URI */
+    /**
+     * Restore saved folder URI
+     */
     private void restorePreferences() {
         String uriStr = prefs.getString(KEY_TREE_URI, null);
         if (uriStr != null) {
@@ -185,7 +187,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** Configure SAF folder picker */
+    /**
+     * Configure SAF folder picker
+     */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
