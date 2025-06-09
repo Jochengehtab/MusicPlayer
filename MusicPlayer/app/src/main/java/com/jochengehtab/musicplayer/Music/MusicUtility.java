@@ -34,17 +34,17 @@ public class MusicUtility {
         mediaPlayer = new MediaPlayer();
 
         // Try to fetch saved start/end in seconds
-        Integer[] ts = timestampsConfig.readArray(
+        Integer[] timestamps = timestampsConfig.readArray(
                 FileManager.getUriHash(uri), Integer[].class
         );
 
         try {
             mediaPlayer.setDataSource(context, uri);
 
-            if (ts != null && ts.length > 1) {
+            if (timestamps != null && timestamps.length > 1) {
                 // Trimmed playback
-                final int startMs = ts[0] * 1000;
-                final int durationMs = (ts[1] - ts[0]) * 1000;
+                final int startMs = timestamps[0] * 1000;
+                final int durationMs = (timestamps[1] - timestamps[0]) * 1000;
 
                 mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startMs));
                 mediaPlayer.setOnSeekCompleteListener(mp -> {

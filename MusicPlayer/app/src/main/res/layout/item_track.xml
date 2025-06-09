@@ -13,26 +13,26 @@
         android:id="@+id/text_track_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/track_title"
-        android:textSize="16sp"
-        android:textColor="@color/white"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/overflow_icon"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         android:ellipsize="end"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:text="@string/track_title"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/overflow_icon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
         android:id="@+id/overflow_icon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:src="@drawable/ic_more_vert_white_24dp"
-        android:contentDescription="@string/track_options"
         android:clickable="true"
+        android:contentDescription="@string/track_options"
         android:focusable="true"
+        android:src="@drawable/ic_more_vert_white_24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
