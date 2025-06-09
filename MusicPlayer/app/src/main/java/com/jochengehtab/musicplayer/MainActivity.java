@@ -1,18 +1,23 @@
 package com.jochengehtab.musicplayer;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -25,6 +30,8 @@ import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -45,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Track lastTrack;  // the track to re‐play / stop
 
+    @SuppressLint("RestrictedApi")
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
 
         // UI refs
         MaterialButton chooseBtn = findViewById(R.id.choose);
-        MaterialButton mixBtn = findViewById(R.id.mix);
         ImageButton bottomPlay = findViewById(R.id.bottom_play);
         TextView bottomTitle = findViewById(R.id.bottom_title);
 
@@ -120,15 +127,6 @@ public class MainActivity extends AppCompatActivity {
 
         chooseBtn.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
-        mixBtn.setOnClickListener(v -> {
-            if (musicDirectoryUri == null) {
-                Toast.makeText(this, "Choose a folder first.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            loadAndShowTracks();
-            musicPlayer.playMix(fileManager.loadMusicFiles());
-        });
-
         bottomPlay.setOnClickListener(v -> {
             if (lastTrack == null) {
                 Toast.makeText(this, "No track selected.", Toast.LENGTH_SHORT).show();
@@ -143,6 +141,41 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 musicUtility.play(lastTrack.uri(), playbackListener);
             }
+        });
+
+        ImageButton bottomOptions = findViewById(R.id.bottom_options);
+        bottomOptions.setOnClickListener(v -> {
+            // 1) Build a CharSequence[] from resources
+            CharSequence[] items = getResources().getTextArray(R.array.playback_options);
+
+            // 2) Determine which item is currently selected (or -1)
+            int checkedItem = musicPlayer.isLooping() ? 0
+                    : musicPlayer.isMixing() ? 1
+                    : -1;
+
+            // 3) Build the dialog
+            new AlertDialog.Builder(this)
+                    .setTitle("Playback Mode")
+                    .setSingleChoiceItems(items, checkedItem, (dialog, which) -> {
+                        // Called when the user taps an option
+                        dialog.dismiss();
+                        if (which == 0) {
+                            // Loop selected
+                            boolean looping = musicPlayer.toggleLoop();
+                            Toast.makeText(this,
+                                    looping ? "Loop ON" : "Loop OFF",
+                                    Toast.LENGTH_SHORT).show();
+                        } else if (which == 1) {
+                            // Mix selected
+                            if (fileManager != null) {
+                                // enable mix mode and start mix
+                                musicPlayer.playMix(fileManager.loadMusicFiles());
+                                Toast.makeText(this, "Mix started", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
     }
 

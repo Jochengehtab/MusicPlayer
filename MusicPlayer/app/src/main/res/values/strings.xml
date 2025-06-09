@@ -12,5 +12,9 @@
     <string name="track_options">Track Options</string>
     <string name="reset">Reset</string>
     <string name="no_track_selected">No Track Selected</string>
-
+    <string name="options">Options</string>
+    <string-array name="playback_options">
+        <item>Loop</item>
+        <item>Mix</item>
+    </string-array>
 </resources>
