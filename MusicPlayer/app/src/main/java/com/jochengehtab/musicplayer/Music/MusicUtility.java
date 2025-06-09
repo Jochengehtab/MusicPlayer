@@ -28,12 +28,9 @@ public class MusicUtility {
      * Notifies the single listener when playback starts and when it ends.
      */
     public void play(Uri uri, OnPlaybackStateListener listener) {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-        }
+        if (mediaPlayer != null) mediaPlayer.release();
         mediaPlayer = new MediaPlayer();
 
-        // Try to fetch saved start/end in seconds
         Integer[] timestamps = timestampsConfig.readArray(
                 FileManager.getUriHash(uri), Integer[].class
         );
@@ -41,41 +38,38 @@ public class MusicUtility {
         try {
             mediaPlayer.setDataSource(context, uri);
 
-            if (timestamps != null && timestamps.length > 1) {
-                // Trimmed playback
-                final int startMs = timestamps[0] * 1000;
-                final int durationMs = (timestamps[1] - timestamps[0]) * 1000;
+            boolean trimmed = timestamps != null && timestamps.length > 1;
+            final int startMs = trimmed ? timestamps[0] * 1000 : 0;
+            final int durationMs = trimmed ? (timestamps[1] - timestamps[0]) * 1000 : 0;
 
-                mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startMs));
-                mediaPlayer.setOnSeekCompleteListener(mp -> {
+            mediaPlayer.setOnPreparedListener(mp -> {
+                if (trimmed) {
+                    mp.seekTo(startMs);
+                } else {
                     mp.start();
                     listener.onPlaybackStarted();
+                }
+            });
 
-                    // Stop after the trimmed duration
-                    handler.postDelayed(() -> {
-                        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                            mediaPlayer.pause();
-                        }
-                        listener.onPlaybackStopped();
-                    }, durationMs);
-                });
-                mediaPlayer.prepareAsync();
+            mediaPlayer.setOnSeekCompleteListener(mp -> {
+                mp.start();
+                listener.onPlaybackStarted();
+                handler.postDelayed(() -> {
+                    if (mp.isPlaying()) mp.pause();
+                    listener.onPlaybackStopped();
+                }, durationMs);
+            });
 
-            } else {
-                // Full‐track playback
-                mediaPlayer.setOnPreparedListener(mp -> {
-                    mp.start();
-                    listener.onPlaybackStarted();
-                });
+            if (!trimmed) {
                 mediaPlayer.setOnCompletionListener(mp -> listener.onPlaybackStopped());
-                mediaPlayer.prepare();
             }
+
+            mediaPlayer.prepareAsync();
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-
 
     /**
      * Play a segment of the given URI from startSec to endSec (in seconds).

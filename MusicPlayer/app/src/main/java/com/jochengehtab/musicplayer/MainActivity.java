@@ -65,15 +65,6 @@ public class MainActivity extends AppCompatActivity {
 
         // RecyclerView + empty adapter
         RecyclerView musicList = findViewById(R.id.musicList);
-        musicList.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new TrackAdapter(
-                this,
-                new ArrayList<>(),
-                track -> {
-                },      // will be replaced below
-                musicUtility
-        );
-        musicList.setAdapter(adapter);
 
         // UI refs
         MaterialButton chooseBtn = findViewById(R.id.choose);
@@ -109,6 +100,8 @@ public class MainActivity extends AppCompatActivity {
                 },
                 musicUtility
         );
+
+        musicList.setLayoutManager(new LinearLayoutManager(this));
         musicList.setAdapter(adapter);
 
         // If we already had a folder, initialize JSON/FileManager and load

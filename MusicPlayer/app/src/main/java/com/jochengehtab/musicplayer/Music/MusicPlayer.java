@@ -31,20 +31,11 @@ public class MusicPlayer {
         return loopEnabled;
     }
 
-    public boolean isLooping() {
-        return loopEnabled;
-    }
-
-    public boolean isMixing() {
-        return mixEnabled;
-    }
-
     public synchronized void playMix(List<Track> musicFiles) {
-        cancelToken.set(true);
         cancelToken.set(false);
 
         mixEnabled = true;
-        loopEnabled = false; // Ensure only one is active
+        loopEnabled = false;
 
         playQueue = new ArrayList<>(musicFiles);
         Collections.shuffle(playQueue, random);
@@ -79,6 +70,14 @@ public class MusicPlayer {
                 }
             }
         });
+    }
+
+    public boolean isLooping() {
+        return loopEnabled;
+    }
+
+    public boolean isMixing() {
+        return mixEnabled;
     }
 
     public synchronized void cancelMix() {
