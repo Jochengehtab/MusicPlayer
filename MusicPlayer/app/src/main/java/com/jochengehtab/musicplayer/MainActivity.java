@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
+import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.Utility.FileManager;
@@ -82,8 +83,8 @@ public class MainActivity extends AppCompatActivity {
         TextView bottomTitle = findViewById(R.id.bottom_title);
 
         // 8) Define playbackListener BEFORE adapter creation
-        MusicUtility.OnPlaybackStateListener playbackListener =
-                new MusicUtility.OnPlaybackStateListener() {
+        OnPlaybackStateListener playbackListener =
+                new OnPlaybackStateListener() {
                     @Override
                     public void onPlaybackStarted() {
                         runOnUiThread(() -> {

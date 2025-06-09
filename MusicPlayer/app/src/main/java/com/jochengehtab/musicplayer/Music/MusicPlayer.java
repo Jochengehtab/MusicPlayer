@@ -57,29 +57,31 @@ public class MusicPlayer {
 
     /**
      * Called (once) to begin playing playQueue.get(currentIndex).
-     * When that track completes, the onTrackComplete() callback
-     * will call this method again (with index+1).
+     * When that track completes, onPlaybackStopped() will call this method again.
      */
     private void playNextInQueue() {
-        // If canceled, or no more tracks, do nothing
         if (cancelToken.get() || currentIndex >= playQueue.size()) {
             return;
         }
 
         Uri nextUri = playQueue.get(currentIndex).uri();
 
-        // Pass in a listener that advances currentIndex and calls playNextInQueue()
-        musicUtility.play(nextUri, () -> {
-            // Called when this one URI finishes playing
-            synchronized (MusicPlayer.this) {
-                // If someone canceled in the meantime, stop
-                if (cancelToken.get()) {
-                    return;
+        musicUtility.play(nextUri, new OnPlaybackStateListener() {
+            @Override
+            public void onPlaybackStarted() {
+                // we don't need to do anything special when each track starts
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                // Called when this one URI finishes playing
+                synchronized (MusicPlayer.this) {
+                    if (cancelToken.get()) {
+                        return;
+                    }
+                    currentIndex++;
+                    playNextInQueue();
                 }
-                // Move to the next index
-                currentIndex++;
-                // Recursively launch the next track
-                playNextInQueue();
             }
         });
     }

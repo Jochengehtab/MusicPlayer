@@ -23,59 +23,59 @@ public class MusicUtility {
         this.context = context;
     }
 
-    public interface OnPlaybackStateListener {
-        void onPlaybackStarted();
-        void onPlaybackStopped();
-    }
-
     /**
-     * Play the entire track, notifying the listener when start/stop occur.
+     * Play either the trimmed segment (if timestamps exist) or the full track.
+     * Notifies the single listener when playback starts and when it ends.
      */
-
-    // TODO unify this two play functions into one so that the trim option also works
     public void play(Uri uri, OnPlaybackStateListener listener) {
-        // Release any existing player
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
         mediaPlayer = new MediaPlayer();
+
+        // Try to fetch saved start/end in seconds
+        Integer[] ts = timestampsConfig.readArray(
+                FileManager.getUriHash(uri), Integer[].class
+        );
+
         try {
             mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(mp -> {
-                mp.start();
-                listener.onPlaybackStarted();
-            });
-            mediaPlayer.setOnCompletionListener(mp -> listener.onPlaybackStopped());
-            mediaPlayer.prepare();
+
+            if (ts != null && ts.length > 1) {
+                // Trimmed playback
+                final int startMs = ts[0] * 1000;
+                final int durationMs = (ts[1] - ts[0]) * 1000;
+
+                mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startMs));
+                mediaPlayer.setOnSeekCompleteListener(mp -> {
+                    mp.start();
+                    listener.onPlaybackStarted();
+
+                    // Stop after the trimmed duration
+                    handler.postDelayed(() -> {
+                        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                            mediaPlayer.pause();
+                        }
+                        listener.onPlaybackStopped();
+                    }, durationMs);
+                });
+                mediaPlayer.prepareAsync();
+
+            } else {
+                // Full‐track playback
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    mp.start();
+                    listener.onPlaybackStarted();
+                });
+                mediaPlayer.setOnCompletionListener(mp -> listener.onPlaybackStopped());
+                mediaPlayer.prepare();
+            }
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    /**
-     * Play the entire track but notify listener when it finishes.
-     */
-    public void play(Uri uri, OnTrackCompleteListener listener) {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-        }
-
-        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(uri), Integer[].class);
-
-        if (timestamps.length > 1) {
-            playSegment(uri, timestamps[0], timestamps[1]);
-            return;
-        }
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(MediaPlayer::start);
-            mediaPlayer.setOnCompletionListener(mp -> listener.onTrackComplete());
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     /**
      * Play a segment of the given URI from startSec to endSec (in seconds).
