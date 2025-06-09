@@ -43,9 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
 
-    private boolean isPlaying = false;
-    private boolean isPaused = false;
-    private Track lastTrack;  // the track to re-play / stop
+    private Track lastTrack;  // the track to re‐play / stop
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -54,60 +52,50 @@ public class MainActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setContentView(R.layout.activity_main);
 
-        // 1) SharedPreferences
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-
-        // 2) Restore any saved folder URI
         restorePreferences();
 
-        // 3) Prepare MusicUtility & MusicPlayer
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
 
-        // 4) Set up SAF folder picker (but do not load yet)
         initFolderChooser();
 
-        // 5) RecyclerView + empty adapter
+        // RecyclerView + empty adapter
         RecyclerView musicList = findViewById(R.id.musicList);
         musicList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
                 track -> {
-                    // placeholder until we wire bottom bar
-                },
+                },      // will be replaced below
                 musicUtility
         );
         musicList.setAdapter(adapter);
 
-        // 6) UI refs for bottom bar and buttons
+        // UI refs
         MaterialButton chooseBtn = findViewById(R.id.choose);
         MaterialButton mixBtn = findViewById(R.id.mix);
         ImageButton bottomPlay = findViewById(R.id.bottom_play);
         TextView bottomTitle = findViewById(R.id.bottom_title);
 
-        // 7) Playback listener
+        // Playback listener toggles icon
         OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
-                runOnUiThread(() -> {
-                    bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                    isPlaying = true;
-                    isPaused = false;
-                });
+                runOnUiThread(() ->
+                        bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp)
+                );
             }
 
             @Override
             public void onPlaybackStopped() {
-                runOnUiThread(() -> {
-                    bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-                    isPlaying = false;
-                    isPaused = false;
-                });
+                runOnUiThread(() ->
+                        bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp)
+                );
             }
         };
 
-        // 8) Re-set adapter click logic now that playbackListener exists
+        // Re‐set adapter so we can call play(...)
         adapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
@@ -121,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
         );
         musicList.setAdapter(adapter);
 
-        // 9) If a folder was restored, now initialize JSON, FileManager, and load
+        // If we already had a folder, initialize JSON/FileManager and load
         if (musicDirectoryUri != null) {
             timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
             fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
@@ -130,10 +118,8 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
-        // 10) Choose button launches picker
         chooseBtn.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
-        // 11) Mix button reloads & plays mix
         mixBtn.setOnClickListener(v -> {
             if (musicDirectoryUri == null) {
                 Toast.makeText(this, "Choose a folder first.", Toast.LENGTH_SHORT).show();
@@ -143,39 +129,28 @@ public class MainActivity extends AppCompatActivity {
             musicPlayer.playMix(fileManager.loadMusicFiles());
         });
 
-        // 12) Bottom bar play/pause/resume
         bottomPlay.setOnClickListener(v -> {
             if (lastTrack == null) {
                 Toast.makeText(this, "No track selected.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (isPlaying) {
+            if (musicUtility.isPlaying()) {
                 musicUtility.pause();
                 bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-                isPaused = true;
-                isPlaying = false;
-            } else if (isPaused) {
+            } else if (musicUtility.isPaused()) {
                 musicUtility.resume();
                 bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                isPaused = false;
-                isPlaying = true;
             } else {
                 musicUtility.play(lastTrack.uri(), playbackListener);
             }
         });
     }
 
-    /**
-     * Load tracks and update adapter
-     */
     private void loadAndShowTracks() {
         List<Track> tracks = fileManager.loadMusicFiles();
         adapter.updateList(tracks);
     }
 
-    /**
-     * Restore saved folder URI
-     */
     private void restorePreferences() {
         String uriStr = prefs.getString(KEY_TREE_URI, null);
         if (uriStr != null) {
@@ -187,9 +162,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Configure SAF folder picker
-     */
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
@@ -201,9 +173,11 @@ public class MainActivity extends AppCompatActivity {
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
                         musicDirectoryUri = uri;
 
-                        // Initialize JSON & FileManager *after* picking
                         timestampsConfig = new JSON(
-                                MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json"
+                                MainActivity.this,
+                                PREFS_NAME,
+                                KEY_TREE_URI,
+                                "timestamps.json"
                         );
                         fileManager = new FileManager(
                                 musicDirectoryUri, MainActivity.this, musicUtility

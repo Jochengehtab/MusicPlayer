@@ -139,6 +139,20 @@ public class MusicUtility {
     }
 
     /**
+     * Returns true if the internal MediaPlayer exists and is currently playing.
+     */
+    public boolean isPlaying() {
+        return mediaPlayer != null && mediaPlayer.isPlaying();
+    }
+
+    /**
+     * Returns true if the internal MediaPlayer exists and is paused (i.e. not playing).
+     */
+    public boolean isPaused() {
+        return mediaPlayer != null && !mediaPlayer.isPlaying();
+    }
+
+    /**
      * Stop & release resources.
      */
     public void stopAndRelease() {
