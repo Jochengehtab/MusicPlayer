@@ -99,6 +99,38 @@ public class MusicUtility {
         }
     }
 
+    /**
+     * Make whatever is currently loaded loop forever.
+     * When the track ends, onPlaybackStopped() is called,
+     * then the track is rewound and onPlaybackStarted() is called again.
+     */
+    public void loopMediaPlayer(OnPlaybackStateListener listener) {
+        if (mediaPlayer == null) {
+            throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
+        }
+
+        // 1) Cancel any pending pause callbacks from play(...)
+        handler.removeCallbacksAndMessages(null);
+
+        // 2) Remove the old OnSeekCompleteListener so it won't schedule new pauses
+        mediaPlayer.setOnSeekCompleteListener(null);
+
+        // 3) Install our loop‐on‐completion listener
+        mediaPlayer.setOnCompletionListener(mp -> {
+            listener.onPlaybackStopped();
+            mp.seekTo(0);
+            mp.start();
+            listener.onPlaybackStarted();
+        });
+
+        // 4) Kick off playback if it isn't already running
+        if (!mediaPlayer.isPlaying()) {
+            mediaPlayer.start();
+            listener.onPlaybackStarted();
+        }
+    }
+
+
     public int getTrackDuration(Uri uri) {
         int durationMs;
         // Determine track duration in seconds

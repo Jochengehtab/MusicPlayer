@@ -1,6 +1,5 @@
 package com.jochengehtab.musicplayer;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -47,7 +46,6 @@ public class MainActivity extends AppCompatActivity {
 
     private Track lastTrack;  // the track to re‐play / stop
 
-    @SuppressLint("RestrictedApi")
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,9 +160,7 @@ public class MainActivity extends AppCompatActivity {
                     // uncheck the other
                     popup.getMenu().findItem(R.id.action_mix).setChecked(false);
                     item.setChecked(looping);
-                    Toast.makeText(this,
-                            looping ? "Loop ON" : "Loop OFF",
-                            Toast.LENGTH_SHORT).show();
+                    musicUtility.loopMediaPlayer(playbackListener);
                     return true;
 
                 } else if (id == R.id.action_mix) {
@@ -173,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                     popup.getMenu().findItem(R.id.action_loop).setChecked(false);
                     item.setChecked(true);
-                    Toast.makeText(this, "Mix started", Toast.LENGTH_SHORT).show();
                     return true;
                 }
                 return false;
