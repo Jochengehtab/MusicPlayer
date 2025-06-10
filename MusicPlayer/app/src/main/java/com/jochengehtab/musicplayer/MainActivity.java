@@ -2,6 +2,7 @@ package com.jochengehtab.musicplayer;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
@@ -104,9 +105,18 @@ public class MainActivity extends AppCompatActivity {
 
         // If we already had a folder, initialize JSON/FileManager and load
         if (musicDirectoryUri != null) {
-            timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-            fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
-            loadAndShowTracks();
+            if (hasPersistedPermissions()) {
+                // Permissions are still valid, proceed as normal
+                timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+                fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
+                loadAndShowTracks();
+            } else {
+                // Permissions were lost or are invalid
+                Toast.makeText(this, "Permission for folder was lost. Please choose it again.", Toast.LENGTH_LONG).show();
+                // Clear the invalid URI so we don't keep trying
+                musicDirectoryUri = null;
+                prefs.edit().remove(KEY_TREE_URI).apply();
+            }
         } else {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
@@ -186,12 +196,26 @@ public class MainActivity extends AppCompatActivity {
     private void restorePreferences() {
         String uriStr = prefs.getString(KEY_TREE_URI, null);
         if (uriStr != null) {
-            Uri saved = Uri.parse(uriStr);
-            getContentResolver().takePersistableUriPermission(
-                    saved, Intent.FLAG_GRANT_READ_URI_PERMISSION
-            );
-            musicDirectoryUri = saved;
+            // Parse the URI
+            musicDirectoryUri = Uri.parse(uriStr);
         }
+    }
+
+    private boolean hasPersistedPermissions() {
+        if (musicDirectoryUri == null) {
+            return false;
+        }
+
+        List<UriPermission> persistedPermissions = getContentResolver().getPersistedUriPermissions();
+        for (UriPermission permission : persistedPermissions) {
+            if (permission.getUri().equals(musicDirectoryUri) && permission.isWritePermission()) {
+                // We found our URI and it has write permission
+                return true;
+            }
+        }
+
+        // If we get here, we either didn't find our URI or it didn't have write permission
+        return false;
     }
 
     private void initFolderChooser() {
@@ -199,9 +223,10 @@ public class MainActivity extends AppCompatActivity {
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
                     if (uri != null) {
-                        getContentResolver().takePersistableUriPermission(
-                                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        );
+                        final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                        getContentResolver().takePersistableUriPermission(uri, takeFlags);
+
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
                         musicDirectoryUri = uri;
 

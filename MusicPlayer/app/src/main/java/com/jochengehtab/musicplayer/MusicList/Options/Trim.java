@@ -185,7 +185,10 @@ public class Trim {
         int dotIndex = fullName.lastIndexOf('.');
         String baseName = (dotIndex >= 0 ? fullName.substring(0, dotIndex) : fullName);
         String extension = (dotIndex >= 0 ? fullName.substring(dotIndex) : "");
-        String backupName = baseName + "_backup" + extension;
+        // Sanitize the baseName to remove illegal characters
+        String sanitizedBaseName = baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        String backupName = sanitizedBaseName + "_backup" + extension; // Use the sanitized name
 
         // If a backup with that name already exists in “Backups”, skip creation.
         // Otherwise create the new file and copy bytes from the original to the backup.
