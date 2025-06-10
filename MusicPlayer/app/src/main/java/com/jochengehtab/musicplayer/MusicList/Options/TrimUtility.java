@@ -1,9 +1,23 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
+import android.content.Context;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+
 import androidx.documentfile.provider.DocumentFile;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Objects;
 
 public class TrimUtility {
     private final String BACKUPS_FOLDER_NAME = "Backups";
+    private final Context context;
+
+    public TrimUtility(Context context) {
+        this.context = context;
+    }
 
     public DocumentFile validateBackupFolder(DocumentFile treeRoot) {
         DocumentFile backupsFolder = treeRoot.findFile(BACKUPS_FOLDER_NAME);
@@ -17,5 +31,30 @@ public class TrimUtility {
             throw new RuntimeException("A non‐folder named “Backups” already exists in that tree.");
         }
         return backupsFolder;
+    }
+
+    public void backUpFile(DocumentFile backupsFolder, Uri originalUri, String mimeType, String backupName) {
+        DocumentFile existingBackup = backupsFolder.createFile(Objects.requireNonNull(mimeType), backupName);
+        if (existingBackup == null) {
+            throw new RuntimeException("Failed to create backup file \"" + backupName + "\".");
+        }
+
+        try (
+                ParcelFileDescriptor pfdIn  = context.getContentResolver()
+                        .openFileDescriptor(originalUri, "r");
+                ParcelFileDescriptor pfdOut = context.getContentResolver()
+                        .openFileDescriptor(existingBackup.getUri(), "w");
+                FileInputStream inStream   = new FileInputStream(Objects.requireNonNull(pfdIn).getFileDescriptor());
+                FileOutputStream outStream  = new FileOutputStream(Objects.requireNonNull(pfdOut).getFileDescriptor())
+        ) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inStream.read(buffer)) > 0) {
+                outStream.write(buffer, 0, bytesRead);
+            }
+            outStream.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

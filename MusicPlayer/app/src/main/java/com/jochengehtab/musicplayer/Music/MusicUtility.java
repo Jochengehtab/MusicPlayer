@@ -8,6 +8,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
@@ -41,6 +42,10 @@ public class MusicUtility {
             boolean trimmed = timestamps != null && timestamps.length > 1;
             final int startMs = trimmed ? timestamps[0] * 1000 : 0;
             final int durationMs = trimmed ? (timestamps[1] - timestamps[0]) * 1000 : 0;
+
+            if (startMs == durationMs) {
+                Toast.makeText(context, "Start and End time are the same!", Toast.LENGTH_SHORT).show();
+            }
 
             mediaPlayer.setOnPreparedListener(mp -> {
                 if (trimmed) {
@@ -122,7 +127,7 @@ public class MusicUtility {
             throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
         }
 
-        // 1) Cancel any pending pause callbacks from play(...)
+        // 1) Cancel any pending pause callbacks from play()
         handler.removeCallbacksAndMessages(null);
 
         // 2) Remove the old OnSeekCompleteListener so it won't schedule new pauses

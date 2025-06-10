@@ -5,7 +5,6 @@ import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -13,6 +12,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog.Builder;
 import androidx.documentfile.provider.DocumentFile;
 
 import com.jochengehtab.musicplayer.MainActivity;
@@ -20,21 +20,18 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
-import androidx.appcompat.app.AlertDialog.Builder;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Objects;
 
 public class Trim {
     private final Context context;
     private final MusicUtility musicUtility;
-    private final TrimUtility trimUtility = new TrimUtility();
+    private final TrimUtility trimUtility;
 
     public Trim(Context context, MusicUtility musicUtility) {
         this.context = context;
         this.musicUtility = musicUtility;
+        this.trimUtility = new TrimUtility(context);
     }
 
     /**
@@ -48,6 +45,7 @@ public class Trim {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_trim, null);
         builder.setView(dialogView);
 
+        // Initialize the UI
         SeekBar seekStart = dialogView.findViewById(R.id.seek_start);
         SeekBar seekEnd = dialogView.findViewById(R.id.seek_end);
         TextView valueStart = dialogView.findViewById(R.id.value_start);
@@ -57,7 +55,7 @@ public class Trim {
         Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(track.uri()), Integer[].class);
         assert timestamps.length > 1;
 
-        final int durationSec = timestamps[1];
+        final int durationSec = Math.max(1, timestamps[1]);
 
         // Initialize sliders and labels
         valueStart.setText(String.valueOf(timestamps[0]));
@@ -65,18 +63,19 @@ public class Trim {
         seekStart.setProgress(timestamps[0]);
         seekEnd.setProgress(timestamps[1]);
 
-        // SeekBar listeners enforce start < end
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int startSec = (durationSec * progress) / 100;
-                int endSec = (durationSec * seekEnd.getProgress()) / 100;
-                if (startSec >= endSec) {
-                    int newProg = seekEnd.getProgress() - 1;
-                    if (newProg < 0) newProg = 0;
-                    sb.setProgress(newProg);
-                    startSec = (durationSec * newProg) / 100;
+                int endProg = seekEnd.getProgress();
+
+                // Clamp to end - 1 if needed
+                if (progress >= endProg) {
+                    progress = endProg - 1;
+                    if (progress < 0) progress = 0;
+                    sb.setProgress(progress);
                 }
+
+                int startSec = (durationSec * progress) / 100;
                 valueStart.setText(String.valueOf(startSec));
             }
 
@@ -92,14 +91,26 @@ public class Trim {
         seekEnd.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int endSec = (durationSec * progress) / 100;
-                int startSec2 = (durationSec * seekStart.getProgress()) / 100;
-                if (endSec <= startSec2) {
-                    int newProg = seekStart.getProgress() + 1;
-                    if (newProg > 100) newProg = 100;
-                    sb.setProgress(newProg);
-                    endSec = (durationSec * newProg) / 100;
+                int startProg = seekStart.getProgress();
+                // ceil() returns the smallest integer that is greater or equal to the argument 
+                int minProgressFor1Sec = (int) Math.ceil(100.0 / durationSec);
+                int minAllowed = startProg + minProgressFor1Sec;
+
+                // Enforce lower bound for actual time range
+                if (progress < minProgressFor1Sec) {
+                    progress = minProgressFor1Sec;
+                    sb.setProgress(progress);
+                    return;
                 }
+
+                // Enforce that end is at least 1 second after start
+                if (progress < minAllowed) {
+                    progress = Math.min(minAllowed, 100);
+                    sb.setProgress(progress);
+                    return;
+                }
+
+                int endSec = (durationSec * progress) / 100;
                 valueEnd.setText(String.valueOf(endSec));
             }
 
@@ -168,7 +179,7 @@ public class Trim {
         DocumentFile backupsFolder = trimUtility.validateBackupFolder(treeRoot);
 
         // Locate the DocumentFile corresponding to the original track
-        String fullName = track.title(); // e.g. “MySong.mp3”
+        String fullName = track.title();
         DocumentFile originalDoc = treeRoot.findFile(fullName);
         if (originalDoc == null) {
             // Fallback
@@ -192,29 +203,8 @@ public class Trim {
 
         // If a backup with that name already exists in “Backups”, skip creation.
         // Otherwise create the new file and copy bytes from the original to the backup.
-        DocumentFile existingBackup = backupsFolder.findFile(backupName);
-        if (existingBackup == null) {
-            existingBackup = backupsFolder.createFile(Objects.requireNonNull(mimeType), backupName);
-            if (existingBackup == null) {
-                throw new IOException("Failed to create backup file \"" + backupName + "\".");
-            }
-
-            // Copy bytes: originalUri to existingBackup.getUri()
-            try (
-                    ParcelFileDescriptor pfdIn  = context.getContentResolver()
-                            .openFileDescriptor(originalUri, "r");
-                    ParcelFileDescriptor pfdOut = context.getContentResolver()
-                            .openFileDescriptor(existingBackup.getUri(), "w");
-                    FileInputStream  inStream   = new FileInputStream(Objects.requireNonNull(pfdIn).getFileDescriptor());
-                    FileOutputStream outStream  = new FileOutputStream(Objects.requireNonNull(pfdOut).getFileDescriptor())
-            ) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inStream.read(buffer)) > 0) {
-                    outStream.write(buffer, 0, bytesRead);
-                }
-                outStream.flush();
-            }
+        if (backupsFolder.findFile(backupName) == null) {
+            trimUtility.backUpFile(backupsFolder, originalUri, mimeType, backupName);
         }
 
         Toast.makeText(
