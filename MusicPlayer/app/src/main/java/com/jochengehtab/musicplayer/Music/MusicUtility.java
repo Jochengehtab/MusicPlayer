@@ -55,7 +55,14 @@ public class MusicUtility {
                 mp.start();
                 listener.onPlaybackStarted();
                 handler.postDelayed(() -> {
-                    if (mp.isPlaying()) mp.pause();
+                    // Only act if the MediaPlayer for this task is still the active one.
+                    if (mp != this.mediaPlayer) {
+                        return; // This player is stale, do nothing.
+                    }
+
+                    if (mp.isPlaying()) {
+                        mp.pause();
+                    }
                     listener.onPlaybackStopped();
                 }, durationMs);
             });
@@ -88,7 +95,13 @@ public class MusicUtility {
                 mediaPlayer.start();
                 int durationMs = (endSec - startSec) * 1000;
                 handler.postDelayed(() -> {
-                    if (this.mediaPlayer != null && this.mediaPlayer.isPlaying()) {
+                    // Note: The captured lambda variable is also named 'mediaPlayer'
+                    // We compare it to the class instance 'this.mediaPlayer'
+                    if (mediaPlayer != this.mediaPlayer) {
+                        return; // This player is stale, do nothing
+                    }
+
+                    if (this.mediaPlayer.isPlaying()) {
                         this.mediaPlayer.pause();
                     }
                 }, durationMs);
