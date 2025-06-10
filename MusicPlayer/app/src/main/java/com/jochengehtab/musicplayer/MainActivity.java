@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView musicList = findViewById(R.id.musicList);
 
         // UI refs
-        MaterialButton chooseBtn = findViewById(R.id.choose);
+        MaterialButton chooseButton = findViewById(R.id.choose);
         ImageButton bottomPlay = findViewById(R.id.bottom_play);
         TextView bottomTitle = findViewById(R.id.bottom_title);
 
@@ -111,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
-        chooseBtn.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
+        chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
         bottomPlay.setOnClickListener(v -> {
             if (lastTrack == null) {

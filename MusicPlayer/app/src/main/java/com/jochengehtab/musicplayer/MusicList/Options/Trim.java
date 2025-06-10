@@ -20,6 +20,7 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
+import androidx.appcompat.app.AlertDialog.Builder;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,6 +30,7 @@ import java.util.Objects;
 public class Trim {
     private final Context context;
     private final MusicUtility musicUtility;
+    private final TrimUtility trimUtility = new TrimUtility();
 
     public Trim(Context context, MusicUtility musicUtility) {
         this.context = context;
@@ -40,12 +42,10 @@ public class Trim {
      * AND when “OK” is pressed, back up the original file and (placeholder) copy it back over itself.
      */
     public void showTrimDialog(Track track) {
-        androidx.appcompat.app.AlertDialog.Builder builder =
-                new androidx.appcompat.app.AlertDialog.Builder(context);
+        Builder builder = new Builder(context);
         builder.setTitle("Trim Track");
 
-        View dialogView = LayoutInflater.from(context)
-                .inflate(R.layout.dialog_trim, null);
+        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_trim, null);
         builder.setView(dialogView);
 
         SeekBar seekStart = dialogView.findViewById(R.id.seek_start);
@@ -155,7 +155,6 @@ public class Trim {
 
         String treeUriString = prefs.getString(MainActivity.KEY_TREE_URI, null);
         if (treeUriString == null) {
-            // If the user never picked a folder, we can’t proceed
             throw new IOException("No SAF-folder URI saved; cannot locate parent folder.");
         }
 
@@ -166,33 +165,17 @@ public class Trim {
             throw new IOException("Unable to resolve the SAF tree folder as a directory.");
         }
 
-        // Find or create the “Backups” subfolder under that tree
-        final String BACKUPS_FOLDER_NAME = "Backups";
-        DocumentFile backupsFolder = treeRoot.findFile(BACKUPS_FOLDER_NAME);
-        if (backupsFolder == null) {
-            // Didn’t exist yet, so create it
-            backupsFolder = treeRoot.createDirectory(BACKUPS_FOLDER_NAME);
-            if (backupsFolder == null) {
-                throw new IOException("Failed to create “Backups” folder under the chosen tree.");
-            }
-        } else if (!backupsFolder.isDirectory()) {
-            // We found something named “Backups” but it isn’t a folder
-            throw new IOException("A non‐folder named “Backups” already exists in that tree.");
-        }
+        DocumentFile backupsFolder = trimUtility.validateBackupFolder(treeRoot);
 
         // Locate the DocumentFile corresponding to the original track
-        // (We assume files are immediate children of treeRoot. If your files are nested
-        //  in subfolders, you must walk the tree recursively instead of using findFile(...).)
         String fullName = track.title(); // e.g. “MySong.mp3”
         DocumentFile originalDoc = treeRoot.findFile(fullName);
         if (originalDoc == null) {
-            // As a fallback, try fromSingleUri(...)
+            // Fallback
             originalDoc = DocumentFile.fromSingleUri(context, track.uri());
             if (originalDoc == null) {
                 throw new IOException("Cannot locate the original file inside the granted tree.");
             }
-            // Note: fromSingleUri(...)  getParentFile() will still be null,
-            // so we continue using treeRoot as the “parent folder” for anything we create.
         }
 
         Uri originalUri = originalDoc.getUri();
@@ -229,25 +212,6 @@ public class Trim {
                 }
                 outStream.flush();
             }
-        }
-
-        // Overwrite the original file with its own content (placeholder)
-        // (This truncates the file, then writes all bytes back in. In a real “trim”
-        //  implementation you’d decode→slice→re‐encode here instead.)
-        try (
-                ParcelFileDescriptor pfdInOverwrite  = context.getContentResolver()
-                        .openFileDescriptor(originalUri, "r");
-                ParcelFileDescriptor pfdOutOverwrite = context.getContentResolver()
-                        .openFileDescriptor(originalUri, "w");
-                FileInputStream  inOverwrite   = new FileInputStream(Objects.requireNonNull(pfdInOverwrite).getFileDescriptor());
-                FileOutputStream outOverwrite  = new FileOutputStream(Objects.requireNonNull(pfdOutOverwrite).getFileDescriptor())
-        ) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = inOverwrite.read(buffer)) > 0) {
-                outOverwrite.write(buffer, 0, bytesRead);
-            }
-            outOverwrite.flush();
         }
 
         Toast.makeText(
