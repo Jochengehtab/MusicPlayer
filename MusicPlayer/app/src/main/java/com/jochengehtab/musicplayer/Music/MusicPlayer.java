@@ -25,9 +25,6 @@ public class MusicPlayer {
 
     public boolean toggleLoop() {
         loopEnabled = !loopEnabled;
-        if (loopEnabled) {
-            mixEnabled = false; // Ensure only one is active
-        }
         return loopEnabled;
     }
 
@@ -44,16 +41,16 @@ public class MusicPlayer {
         playNextInQueue();
     }
 
-    private void playNextInQueue() {
+    private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
             return;
         }
         if (currentIndex >= playQueue.size()) {
-            if (loopEnabled) {
-                currentIndex = 0;
-            } else {
+            mixEnabled = false;
+            if (!loopEnabled) {
                 return;
             }
+            currentIndex = 0;
         }
 
         Track nextUri = playQueue.get(currentIndex);
@@ -63,8 +60,11 @@ public class MusicPlayer {
 
             @Override
             public void onPlaybackStopped() {
+                // We lock MusicPlayer.this to prevent race condition
                 synchronized (MusicPlayer.this) {
-                    if (cancelToken.get()) return;
+                    if (cancelToken.get()) {
+                        return;
+                    }
                     currentIndex++;
                     playNextInQueue();
                 }

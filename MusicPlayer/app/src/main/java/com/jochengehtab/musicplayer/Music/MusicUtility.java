@@ -29,7 +29,10 @@ public class MusicUtility {
      * Notifies the single listener when playback starts and when it ends.
      */
     public void play(Uri uri, OnPlaybackStateListener listener) {
-        if (mediaPlayer != null) mediaPlayer.release();
+        if (isInitialized()) {
+            mediaPlayer.release();
+        }
+
         mediaPlayer = new MediaPlayer();
 
         Integer[] timestamps = timestampsConfig.readArray(
@@ -44,17 +47,12 @@ public class MusicUtility {
             final int durationMs = trimmed ? (timestamps[1] - timestamps[0]) * 1000 : 0;
 
             if (startMs == durationMs) {
-                Toast.makeText(context, "Start and End time are the same!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context,
+                        "Start and End time are the same!", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            mediaPlayer.setOnPreparedListener(mp -> {
-                if (trimmed) {
-                    mp.seekTo(startMs);
-                } else {
-                    mp.start();
-                    listener.onPlaybackStarted();
-                }
-            });
+            mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startMs));
 
             mediaPlayer.setOnSeekCompleteListener(mp -> {
                 mp.start();
@@ -62,7 +60,8 @@ public class MusicUtility {
                 handler.postDelayed(() -> {
                     // Only act if the MediaPlayer for this task is still the active one.
                     if (mp != this.mediaPlayer) {
-                        return; // This player is stale, do nothing.
+                        // This player is stale, do nothing.
+                        return;
                     }
 
                     if (mp.isPlaying()) {
@@ -72,12 +71,7 @@ public class MusicUtility {
                 }, durationMs);
             });
 
-            if (!trimmed) {
-                mediaPlayer.setOnCompletionListener(mp -> listener.onPlaybackStopped());
-            }
-
             mediaPlayer.prepareAsync();
-
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -88,7 +82,7 @@ public class MusicUtility {
      * Stops automatically at endSec.
      */
     public void playSegment(Uri uri, int startSec, int endSec) {
-        if (mediaPlayer != null) {
+        if (isInitialized()) {
             mediaPlayer.release();
             mediaPlayer = null;
         }
@@ -111,6 +105,7 @@ public class MusicUtility {
                     }
                 }, durationMs);
             });
+
             mediaPlayer.prepareAsync();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -123,17 +118,17 @@ public class MusicUtility {
      * then the track is rewound and onPlaybackStarted() is called again.
      */
     public void loopMediaPlayer(OnPlaybackStateListener listener) {
-        if (mediaPlayer == null) {
+        if (!isInitialized()) {
             throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
         }
 
-        // 1) Cancel any pending pause callbacks from play()
+        // Cancel any pending pause callbacks from play()
         handler.removeCallbacksAndMessages(null);
 
-        // 2) Remove the old OnSeekCompleteListener so it won't schedule new pauses
+        // Remove the old OnSeekCompleteListener so it won't schedule new pauses
         mediaPlayer.setOnSeekCompleteListener(null);
 
-        // 3) Install our loop‐on‐completion listener
+        // Install our loop‐on‐completion listener so that we reach the end we start over again
         mediaPlayer.setOnCompletionListener(mp -> {
             listener.onPlaybackStopped();
             mp.seekTo(0);
@@ -141,14 +136,17 @@ public class MusicUtility {
             listener.onPlaybackStarted();
         });
 
-        // 4) Kick off playback if it isn't already running
+        // Kick off playback if it isn't already running
         if (!mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             listener.onPlaybackStarted();
         }
     }
 
-
+    /**
+     * @param uri The {@link Uri} to the file
+     * @return The duration of the track in seconds
+     */
     public int getTrackDuration(Uri uri) {
         int durationMs;
         // Determine track duration in seconds
@@ -156,23 +154,22 @@ public class MusicUtility {
             retriever.setDataSource(context, uri);
             durationMs = Integer.parseInt(Objects.requireNonNull(retriever.extractMetadata(
                     MediaMetadataRetriever.METADATA_KEY_DURATION)));
-            retriever.release();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return durationMs / 1000;
+        return Math.round((float) durationMs / 1000);
     }
 
     public void pause() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+        if (isInitialized() && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
         }
     }
 
     /** Resume if paused. */
     public void resume() {
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+        if (isInitialized() && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
     }
@@ -181,14 +178,11 @@ public class MusicUtility {
      * Returns true if the internal MediaPlayer exists and is currently playing.
      */
     public boolean isPlaying() {
-        return mediaPlayer != null && mediaPlayer.isPlaying();
+        return isInitialized() && mediaPlayer.isPlaying();
     }
 
-    /**
-     * Returns true if the internal MediaPlayer exists and is paused (i.e. not playing).
-     */
-    public boolean isPaused() {
-        return mediaPlayer != null && !mediaPlayer.isPlaying();
+    public boolean isInitialized() {
+        return mediaPlayer != null;
     }
 
     /**

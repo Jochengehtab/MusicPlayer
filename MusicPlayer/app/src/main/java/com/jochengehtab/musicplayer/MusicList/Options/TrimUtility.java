@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.Objects;
 
 public class TrimUtility {
-    private final String BACKUPS_FOLDER_NAME = "Backups";
     private final Context context;
 
     public TrimUtility(Context context) {
@@ -20,6 +19,7 @@ public class TrimUtility {
     }
 
     public DocumentFile validateBackupFolder(DocumentFile treeRoot) {
+        final String BACKUPS_FOLDER_NAME = "Backups";
         DocumentFile backupsFolder = treeRoot.findFile(BACKUPS_FOLDER_NAME);
         if (backupsFolder == null) {
             // Didn’t exist yet, so create it
@@ -56,5 +56,16 @@ public class TrimUtility {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String generateBackupName(String fullName) {
+        // Get the index of the dot of the file extension
+        int dotIndex = fullName.lastIndexOf('.');
+        String baseName = (dotIndex >= 0 ? fullName.substring(0, dotIndex) : fullName);
+        String extension = (dotIndex >= 0 ? fullName.substring(dotIndex) : "");
+        // Sanitize the baseName to remove illegal characters
+        String sanitizedBaseName = baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        return sanitizedBaseName + "_backup" + extension;
     }
 }

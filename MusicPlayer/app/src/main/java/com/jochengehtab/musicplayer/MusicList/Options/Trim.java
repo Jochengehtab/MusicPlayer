@@ -134,7 +134,7 @@ public class Trim {
             musicUtility.playSegment(track.uri(), startSec, endSec);
         });
 
-        // OK: only backup/trim if user changed the bounds from [0, durationSec]
+        // OK Button
         builder.setPositiveButton("OK", (dialog, which) -> {
             int startSec = (durationSec * seekStart.getProgress()) / 100;
             int endSec = (durationSec * seekEnd.getProgress()) / 100;
@@ -154,6 +154,8 @@ public class Trim {
             // If slider still at full range (0 to durationSec), just dismiss
             dialog.dismiss();
         });
+
+        // Chancel button
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
         builder.create().show();
@@ -190,21 +192,13 @@ public class Trim {
         }
 
         Uri originalUri = originalDoc.getUri();
-        String mimeType = context.getContentResolver().getType(originalUri);
-
-        // Build backupName
-        int dotIndex = fullName.lastIndexOf('.');
-        String baseName = (dotIndex >= 0 ? fullName.substring(0, dotIndex) : fullName);
-        String extension = (dotIndex >= 0 ? fullName.substring(dotIndex) : "");
-        // Sanitize the baseName to remove illegal characters
-        String sanitizedBaseName = baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
-
-        String backupName = sanitizedBaseName + "_backup" + extension; // Use the sanitized name
+        String backupName = trimUtility.generateBackupName(fullName);
 
         // If a backup with that name already exists in “Backups”, skip creation.
         // Otherwise create the new file and copy bytes from the original to the backup.
         if (backupsFolder.findFile(backupName) == null) {
-            trimUtility.backUpFile(backupsFolder, originalUri, mimeType, backupName);
+            trimUtility.backUpFile(backupsFolder,
+                    originalUri, context.getContentResolver().getType(originalUri), backupName);
         }
 
         Toast.makeText(

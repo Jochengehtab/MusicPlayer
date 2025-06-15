@@ -125,13 +125,12 @@ public class MainActivity extends AppCompatActivity {
 
         bottomPlay.setOnClickListener(v -> {
             if (lastTrack == null) {
-                Toast.makeText(this, "No track selected.", Toast.LENGTH_SHORT).show();
                 return;
             }
             if (musicUtility.isPlaying()) {
                 musicUtility.pause();
                 bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-            } else if (musicUtility.isPaused()) {
+            } else if (musicUtility.isInitialized()) {
                 musicUtility.resume();
                 bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
             } else {
@@ -170,7 +169,9 @@ public class MainActivity extends AppCompatActivity {
                     // uncheck the other
                     popup.getMenu().findItem(R.id.action_mix).setChecked(false);
                     item.setChecked(looping);
-                    musicUtility.loopMediaPlayer(playbackListener);
+                    if (musicUtility.isInitialized()) {
+                        musicUtility.loopMediaPlayer(playbackListener);
+                    }
                     return true;
 
                 } else if (id == R.id.action_mix) {
