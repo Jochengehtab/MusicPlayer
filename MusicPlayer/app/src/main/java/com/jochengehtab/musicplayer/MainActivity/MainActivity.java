@@ -1,13 +1,11 @@
-package com.jochengehtab.musicplayer;
+package com.jochengehtab.musicplayer.MainActivity;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.UriPermission;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.ImageButton;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +22,7 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
+import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 
@@ -34,6 +33,8 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
+    private final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
     public static JSON timestampsConfig;
 
     private Uri musicDirectoryUri;
@@ -45,7 +46,9 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
 
-    private Track lastTrack;  // the track to re‐play / stop
+    private Track lastTrack;
+
+    public static boolean isMixPlaying = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -59,10 +62,11 @@ public class MainActivity extends AppCompatActivity {
 
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
+        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer);
 
         initFolderChooser();
 
-        // RecyclerView + empty adapter
+        // Music List
         RecyclerView musicList = findViewById(R.id.musicList);
 
         // UI refs
@@ -87,7 +91,6 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        // Re‐set adapter so we can call play(...)
         adapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
@@ -105,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
         // If we already had a folder, initialize JSON/FileManager and load
         if (musicDirectoryUri != null) {
-            if (hasPersistedPermissions()) {
+            if (PermissionUtility.hasPersistedPermissions(musicDirectoryUri, getContentResolver())) {
                 // Permissions are still valid, proceed as normal
                 timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                 fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
@@ -124,9 +127,11 @@ public class MainActivity extends AppCompatActivity {
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
         bottomPlay.setOnClickListener(v -> {
-            if (lastTrack == null) {
+
+            if (lastTrack == null && !isMixPlaying) {
                 return;
             }
+
             if (musicUtility.isPlaying()) {
                 musicUtility.pause();
                 bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
@@ -138,55 +143,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        ImageButton bottomOptions = findViewById(R.id.bottom_options);
-        bottomOptions.setOnClickListener(v -> {
-            PopupMenu popup = new PopupMenu(this, bottomOptions);
-            popup.inflate(R.menu.bottom_bar_menu);
-
-            // 1) Tell the group to be single‐choice
-            popup.getMenu().setGroupCheckable(
-                    R.id.group_playback_modes,
-                    true,
-                    true
-            );
-
-            // 2) Pre‐check the currently active mode, if any
-            int checkedId = musicPlayer.isLooping()
-                    ? R.id.action_loop
-                    : musicPlayer.isMixing()
-                    ? R.id.action_mix
-                    : -1;
-
-            if (checkedId != -1) {
-                popup.getMenu().findItem(checkedId).setChecked(true);
-            }
-
-            // 3) Handle selections
-            popup.setOnMenuItemClickListener(item -> {
-                int id = item.getItemId();
-                if (id == R.id.action_loop) {
-                    boolean looping = musicPlayer.toggleLoop();
-                    // uncheck the other
-                    popup.getMenu().findItem(R.id.action_mix).setChecked(false);
-                    item.setChecked(looping);
-                    if (musicUtility.isInitialized()) {
-                        musicUtility.loopMediaPlayer(playbackListener);
-                    }
-                    return true;
-
-                } else if (id == R.id.action_mix) {
-                    if (fileManager != null) {
-                        musicPlayer.playMix(fileManager.loadMusicFiles());
-                    }
-                    popup.getMenu().findItem(R.id.action_loop).setChecked(false);
-                    item.setChecked(true);
-                    return true;
-                }
-                return false;
-            });
-
-            popup.show();
-        });
+        ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
+        bottomOptions.handleBottomOptions(bottomOptionsButton);
     }
 
     private void loadAndShowTracks() {
@@ -202,30 +160,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean hasPersistedPermissions() {
-        if (musicDirectoryUri == null) {
-            return false;
-        }
-
-        List<UriPermission> persistedPermissions = getContentResolver().getPersistedUriPermissions();
-        for (UriPermission permission : persistedPermissions) {
-            if (permission.getUri().equals(musicDirectoryUri) && permission.isWritePermission()) {
-                // We found our URI and it has write permission
-                return true;
-            }
-        }
-
-        // If we get here, we either didn't find our URI or it didn't have write permission
-        return false;
-    }
-
     private void initFolderChooser() {
         pickDirectoryLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocumentTree(),
                 uri -> {
                     if (uri != null) {
-                        final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
                         getContentResolver().takePersistableUriPermission(uri, takeFlags);
 
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();

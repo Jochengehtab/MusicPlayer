@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.Utility;
 
-import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
+import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
 
 import android.content.Context;
 import android.net.Uri;

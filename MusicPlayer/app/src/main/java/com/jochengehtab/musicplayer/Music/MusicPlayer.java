@@ -1,5 +1,6 @@
 package com.jochengehtab.musicplayer.Music;
 
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public class MusicPlayer {
         }
         if (currentIndex >= playQueue.size()) {
             mixEnabled = false;
+            MainActivity.isMixPlaying = false;
             if (!loopEnabled) {
                 return;
             }
@@ -83,6 +85,10 @@ public class MusicPlayer {
     public synchronized void cancelMix() {
         cancelToken.set(true);
         mixEnabled = false;
+    }
+
+    public synchronized Track getCurrentTitle() {
+        return playQueue.get(currentIndex);
     }
 
     public synchronized void stopAndCancel() {

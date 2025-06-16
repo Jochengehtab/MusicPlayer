@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.Music;
 
-import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
+import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
 
 import android.content.Context;
 import android.media.MediaMetadataRetriever;
@@ -52,20 +52,20 @@ public class MusicUtility {
                 return;
             }
 
-            mediaPlayer.setOnPreparedListener(mp -> mp.seekTo(startMs));
+            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startMs));
 
-            mediaPlayer.setOnSeekCompleteListener(mp -> {
-                mp.start();
+            mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
+                mediaPlayer.start();
                 listener.onPlaybackStarted();
                 handler.postDelayed(() -> {
                     // Only act if the MediaPlayer for this task is still the active one.
-                    if (mp != this.mediaPlayer) {
+                    if (mediaPlayer != this.mediaPlayer) {
                         // This player is stale, do nothing.
                         return;
                     }
 
-                    if (mp.isPlaying()) {
-                        mp.pause();
+                    if (mediaPlayer.isPlaying()) {
+                        mediaPlayer.pause();
                     }
                     listener.onPlaybackStopped();
                 }, durationMs);
@@ -181,18 +181,18 @@ public class MusicUtility {
         return isInitialized() && mediaPlayer.isPlaying();
     }
 
-    public boolean isInitialized() {
-        return mediaPlayer != null;
-    }
-
     /**
      * Stop & release resources.
      */
     public void stopAndRelease() {
-        if (mediaPlayer != null) {
+        if (isInitialized()) {
             mediaPlayer.stop();
             mediaPlayer.release();
             mediaPlayer = null;
         }
+    }
+
+    public boolean isInitialized() {
+        return mediaPlayer != null;
     }
 }

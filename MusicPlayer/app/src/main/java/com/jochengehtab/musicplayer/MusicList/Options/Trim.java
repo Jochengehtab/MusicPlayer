@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
-import static com.jochengehtab.musicplayer.MainActivity.timestampsConfig;
+import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -15,7 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog.Builder;
 import androidx.documentfile.provider.DocumentFile;
 
-import com.jochengehtab.musicplayer.MainActivity;
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
