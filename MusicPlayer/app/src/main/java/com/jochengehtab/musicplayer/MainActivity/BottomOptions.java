@@ -3,23 +3,28 @@ package com.jochengehtab.musicplayer.MainActivity;
 import android.content.Context;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
+import android.widget.TextView;
 
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
+import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.R;
+import com.jochengehtab.musicplayer.Utility.FileManager;
 
 public class BottomOptions {
     private final Context context;
 
     private final MusicPlayer musicPlayer;
     private final MusicUtility musicUtility;
+    private final FileManager fileManager;
 
-    public BottomOptions(Context context, MusicUtility musicUtility, MusicPlayer musicPlayer) {
+    public BottomOptions(Context context, MusicUtility musicUtility, MusicPlayer musicPlayer, FileManager fileManager) {
         this.context = context;
         this.musicUtility = musicUtility;
         this.musicPlayer = musicPlayer;
+        this.fileManager = fileManager;
     }
-    public void handleBottomOptions(ImageButton bottomOptions) {
+    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
         bottomOptions.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, bottomOptions);
             popup.inflate(R.menu.bottom_bar_menu);

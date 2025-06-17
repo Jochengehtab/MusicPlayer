@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
-        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer);
+        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
 
         initFolderChooser();
 
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
-        bottomOptions.handleBottomOptions(bottomOptionsButton);
+        bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
     }
 
     private void loadAndShowTracks() {
