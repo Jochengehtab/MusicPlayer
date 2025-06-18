@@ -1,5 +1,7 @@
 package com.jochengehtab.musicplayer.Music;
 
+import android.util.Log;
+
 import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
@@ -8,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class MusicPlayer {
     private final MusicUtility musicUtility;
@@ -29,7 +32,7 @@ public class MusicPlayer {
         return loopEnabled;
     }
 
-    public synchronized void playMix(List<Track> musicFiles) {
+    public synchronized void playMix(List<Track> musicFiles, Consumer<String> updateBottomTitle) {
         cancelToken.set(false);
 
         mixEnabled = true;
@@ -39,10 +42,10 @@ public class MusicPlayer {
         Collections.shuffle(playQueue, random);
         currentIndex = 0;
 
-        playNextInQueue();
+        playNextInQueue(updateBottomTitle);
     }
 
-    private synchronized void playNextInQueue() {
+    private synchronized void playNextInQueue(Consumer<String> updateBottomTitle) {
         if (cancelToken.get()) {
             return;
         }
@@ -56,6 +59,7 @@ public class MusicPlayer {
         }
 
         Track nextUri = playQueue.get(currentIndex);
+        updateBottomTitle.accept(nextUri.title());
         musicUtility.play(nextUri.uri(), new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {}
@@ -68,7 +72,7 @@ public class MusicPlayer {
                         return;
                     }
                     currentIndex++;
-                    playNextInQueue();
+                    playNextInQueue(updateBottomTitle);
                 }
             }
         });

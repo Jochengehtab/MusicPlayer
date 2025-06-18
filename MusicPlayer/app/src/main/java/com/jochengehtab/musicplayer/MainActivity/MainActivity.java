@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private Track lastTrack;
 
     public static boolean isMixPlaying = false;
+    private TextView bottomTitle;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
 
         musicUtility = new MusicUtility(this);
         musicPlayer = new MusicPlayer(musicUtility);
-        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
 
         initFolderChooser();
 
@@ -72,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         // UI refs
         MaterialButton chooseButton = findViewById(R.id.choose);
         ImageButton bottomPlay = findViewById(R.id.bottom_play);
-        TextView bottomTitle = findViewById(R.id.bottom_title);
+        bottomTitle = findViewById(R.id.bottom_title);
 
         // Playback listener toggles icon
         OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
@@ -124,10 +124,11 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
+        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
+
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
         bottomPlay.setOnClickListener(v -> {
-
             if (lastTrack == null && !isMixPlaying) {
                 return;
             }
@@ -144,8 +145,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
-        bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
+        bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle, this::updateBottomTitle);
     }
+
+    public void updateBottomTitle(String newTitle) {
+        bottomTitle.setText(newTitle);
+    }
+
 
     private void loadAndShowTracks() {
         List<Track> tracks = fileManager.loadMusicFiles();

@@ -1,6 +1,7 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.content.Context;
+import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -10,6 +11,8 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
+
+import java.util.function.Consumer;
 
 public class BottomOptions {
     private final Context context;
@@ -24,7 +27,7 @@ public class BottomOptions {
         this.musicPlayer = musicPlayer;
         this.fileManager = fileManager;
     }
-    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
+    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle, Consumer<String> updateBottomTitle) {
         bottomOptions.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, bottomOptions);
             popup.inflate(R.menu.bottom_bar_menu);
@@ -63,7 +66,7 @@ public class BottomOptions {
                 } else if (id == R.id.action_mix) {
                     if (fileManager != null) {
                         MainActivity.isMixPlaying = true;
-                        musicPlayer.playMix(fileManager.loadMusicFiles());
+                        musicPlayer.playMix(fileManager.loadMusicFiles(), updateBottomTitle);
                         bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
                         bottomTitle.setText(musicPlayer.getCurrentTitle().title());
                     }
