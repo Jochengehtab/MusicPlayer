@@ -27,7 +27,7 @@ public class BottomOptions {
         this.musicPlayer = musicPlayer;
         this.fileManager = fileManager;
     }
-    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle, Consumer<String> updateBottomTitle) {
+    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
         bottomOptions.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, bottomOptions);
             popup.inflate(R.menu.bottom_bar_menu);
@@ -66,7 +66,7 @@ public class BottomOptions {
                 } else if (id == R.id.action_mix) {
                     if (fileManager != null) {
                         MainActivity.isMixPlaying = true;
-                        musicPlayer.playMix(fileManager.loadMusicFiles(), updateBottomTitle);
+                        musicPlayer.playMix(fileManager.loadMusicFiles());
                         bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
                         bottomTitle.setText(musicPlayer.getCurrentTitle().title());
                     }

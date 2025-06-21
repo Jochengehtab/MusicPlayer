@@ -22,9 +22,13 @@ public class MusicPlayer {
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
+    private final Consumer<String> updateBottomTitle;
+    private final Consumer<Boolean> updateBottomPlay;
 
-    public MusicPlayer(MusicUtility musicUtility) {
+    public MusicPlayer(MusicUtility musicUtility, Consumer<String> updateBottomTitle, Consumer<Boolean> updateBottomPlay) {
         this.musicUtility = musicUtility;
+        this.updateBottomPlay = updateBottomPlay;
+        this.updateBottomTitle = updateBottomTitle;
     }
 
     public boolean toggleLoop() {
@@ -32,7 +36,7 @@ public class MusicPlayer {
         return loopEnabled;
     }
 
-    public synchronized void playMix(List<Track> musicFiles, Consumer<String> updateBottomTitle) {
+    public synchronized void playMix(List<Track> musicFiles) {
         cancelToken.set(false);
 
         mixEnabled = true;
@@ -42,16 +46,19 @@ public class MusicPlayer {
         Collections.shuffle(playQueue, random);
         currentIndex = 0;
 
-        playNextInQueue(updateBottomTitle);
+        playNextInQueue();
     }
 
-    private synchronized void playNextInQueue(Consumer<String> updateBottomTitle) {
+    private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
+            MainActivity.isMixPlaying = false;
+            updateBottomPlay.accept(true);
             return;
         }
         if (currentIndex >= playQueue.size()) {
             mixEnabled = false;
             MainActivity.isMixPlaying = false;
+            updateBottomPlay.accept(true);
             if (!loopEnabled) {
                 return;
             }
@@ -72,7 +79,7 @@ public class MusicPlayer {
                         return;
                     }
                     currentIndex++;
-                    playNextInQueue(updateBottomTitle);
+                    playNextInQueue();
                 }
             }
         });

@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
 
     public static boolean isMixPlaying = false;
     private TextView bottomTitle;
+    private BottomPlayButton bottomPlay;
+    private OnPlaybackStateListener playbackListener;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         restorePreferences();
 
         musicUtility = new MusicUtility(this);
-        musicPlayer = new MusicPlayer(musicUtility);
+        musicPlayer = new MusicPlayer(musicUtility, this::updateBottomTitle, this::updateBottomPlay);
 
         initFolderChooser();
 
@@ -71,11 +74,11 @@ public class MainActivity extends AppCompatActivity {
 
         // UI refs
         MaterialButton chooseButton = findViewById(R.id.choose);
-        ImageButton bottomPlay = findViewById(R.id.bottom_play);
+        bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
 
         // Playback listener toggles icon
-        OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
+        playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
                 runOnUiThread(() ->
@@ -128,30 +131,38 @@ public class MainActivity extends AppCompatActivity {
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
 
-        bottomPlay.setOnClickListener(v -> {
-            if (lastTrack == null && !isMixPlaying) {
-                return;
-            }
-
-            if (musicUtility.isPlaying()) {
-                musicUtility.pause();
-                bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-            } else if (musicUtility.isInitialized()) {
-                musicUtility.resume();
-                bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-            } else {
-                musicUtility.play(lastTrack.uri(), playbackListener);
-            }
-        });
+        bottomPlay.setOnClickListener(v -> updateBottomPlay(false));
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
-        bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle, this::updateBottomTitle);
+        bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
+    }
+
+    public void updateBottomPlay(boolean forceUpdate) {
+
+        bottomPlay.toggleIsPlayIconShowing();
+        if (forceUpdate) {
+            if (bottomPlay.isPlayIconShowing()) {
+                bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+            } else {
+                bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+            }
+            return;
+        }
+
+        if (musicUtility.isPlaying()) {
+            musicUtility.pause();
+            bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+        } else if (musicUtility.isInitialized()) {
+            musicUtility.resume();
+            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+        } else {
+            musicUtility.play(lastTrack.uri(), playbackListener);
+        }
     }
 
     public void updateBottomTitle(String newTitle) {
         bottomTitle.setText(newTitle);
     }
-
 
     private void loadAndShowTracks() {
         List<Track> tracks = fileManager.loadMusicFiles();
