@@ -143,8 +143,7 @@ public class Trim {
             if (startSec > 0 || endSec < durationSec) {
                 try {
                     backupAndOverwrite(track);
-                    int[] timestamps2 = {startSec, endSec};
-                    timestampsConfig.write(FileManager.getUriHash(track.uri()), timestamps2);
+                    timestampsConfig.write(FileManager.getUriHash(track.uri()), new int[]{startSec, endSec});
                 } catch (IOException e) {
                     Toast.makeText(context,
                             "Error during backup/trim: " + e.getMessage(),
