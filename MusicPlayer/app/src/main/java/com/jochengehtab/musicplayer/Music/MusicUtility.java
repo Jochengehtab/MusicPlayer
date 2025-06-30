@@ -43,7 +43,6 @@ public class MusicUtility {
         if (timestamps != null) {
             int startSeconds = timestamps[0];
             int endSeconds = timestamps[1];
-            Log.i("Duration", String.valueOf(endSeconds));
 
             if (startSeconds == endSeconds) {
                 Toast.makeText(context,
@@ -98,8 +97,7 @@ public class MusicUtility {
             mediaPlayer = null;
         }
         mediaPlayer = new MediaPlayer();
-        Log.i("Start", String.valueOf(startSec));
-        Log.i("End", String.valueOf(endSec));
+        
         try {
             mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));

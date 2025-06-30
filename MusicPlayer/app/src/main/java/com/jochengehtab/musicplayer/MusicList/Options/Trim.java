@@ -126,19 +126,19 @@ public class Trim {
 
             // Only apply if trimmed
             if (startSec > 0 || endSec < durationSec) {
-                try {
-                    backupAndOverwrite(track);
+                //try {
+                    //backupAndOverwrite(track);
                     timestampsConfig.write(
                             FileManager.getUriHash(track.uri()),
                             new int[]{startSec, endSec, durationSec}
                     );
-                } catch (IOException e) {
+                /*} catch (IOException e) {
                     Toast.makeText(
                             context,
                             "Error during backup/trim: " + e.getMessage(),
                             Toast.LENGTH_LONG
                     ).show();
-                }
+                }*/
             }
             dialog.dismiss();
         });

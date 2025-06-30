@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Options.Rename;
+import com.jochengehtab.musicplayer.MusicList.Options.Reset;
 import com.jochengehtab.musicplayer.MusicList.Options.Trim;
 import com.jochengehtab.musicplayer.R;
 
@@ -29,6 +30,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final List<Track> tracks = new ArrayList<>();
     private final Trim trim;
     private final Rename rename;
+    private final Reset reset;
 
     public TrackAdapter(
             Context context,
@@ -41,6 +43,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.tracks.addAll(initialTracks);
         this.trim = new Trim(context, musicUtility);
         this.rename = new Rename(context);
+        this.reset = new Reset();
     }
 
     @NonNull
@@ -75,6 +78,8 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                             this::updateList
                     );
                     return true;
+                } else if (id == R.id.action_reset) {
+                    reset.reset(current);
                 }
                 return false;
             });
