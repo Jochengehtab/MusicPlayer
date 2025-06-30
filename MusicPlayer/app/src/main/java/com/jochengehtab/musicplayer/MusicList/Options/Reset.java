@@ -14,6 +14,9 @@ public class Reset {
         Integer[] timestamps = timestampsConfig.readArray(
                 FileManager.getUriHash(track.uri()), Integer[].class
         );
+
+        assert timestamps.length > 2;
+
         timestampsConfig.write(
                 FileManager.getUriHash(track.uri()),
                 new int[]{0, timestamps[2], timestamps[2]}

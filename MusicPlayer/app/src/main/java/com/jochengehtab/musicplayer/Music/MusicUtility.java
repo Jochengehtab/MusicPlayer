@@ -97,7 +97,7 @@ public class MusicUtility {
             mediaPlayer = null;
         }
         mediaPlayer = new MediaPlayer();
-        
+
         try {
             mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));
