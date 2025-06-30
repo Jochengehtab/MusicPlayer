@@ -52,30 +52,29 @@ public class Trim {
         TextView valueEnd = dialogView.findViewById(R.id.value_end);
         Button buttonPreview = dialogView.findViewById(R.id.button_preview);
 
-        Integer[] timestamps = timestampsConfig.readArray(FileManager.getUriHash(track.uri()), Integer[].class);
-        assert timestamps.length > 1;
+        Integer[] timestamps = timestampsConfig.readArray(
+                FileManager.getUriHash(track.uri()), Integer[].class
+        );
+        // timestamps[0] = saved start, [1] = saved end, [2] = full duration (sec)
+        final int durationSec = Math.max(1, timestamps[2]);
 
-        final int durationSec = Math.max(1, timestamps[1]);
-
-        // Initialize sliders and labels
-        valueStart.setText(String.valueOf(timestamps[0]));
-        valueEnd.setText(String.valueOf(timestamps[1]));
+        // Configure sliders to represent seconds directly
+        seekStart.setMax(durationSec);
+        seekEnd.setMax(durationSec);
         seekStart.setProgress(timestamps[0]);
         seekEnd.setProgress(timestamps[1]);
+        valueStart.setText(String.valueOf(timestamps[0]));
+        valueEnd.setText(String.valueOf(timestamps[1]));
 
+        // When start thumb moves, clamp so it's always < end
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int endProg = seekEnd.getProgress();
-
-                // Clamp to end - 1 if needed
-                if (progress >= endProg) {
-                    progress = endProg - 1;
-                    if (progress < 0) progress = 0;
-                    sb.setProgress(progress);
+            public void onProgressChanged(SeekBar sb, int startSec, boolean fromUser) {
+                int endSec = seekEnd.getProgress();
+                if (startSec >= endSec) {
+                    startSec = Math.max(0, endSec - 1);
+                    sb.setProgress(startSec);
                 }
-
-                int startSec = (durationSec * progress) / 100;
                 valueStart.setText(String.valueOf(startSec));
             }
 
@@ -88,29 +87,15 @@ public class Trim {
             }
         });
 
+        // When end thumb moves, clamp so it's always > start
         seekEnd.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int startProg = seekStart.getProgress();
-                // ceil() returns the smallest integer that is greater or equal to the argument 
-                int minProgressFor1Sec = (int) Math.ceil(100.0 / durationSec);
-                int minAllowed = startProg + minProgressFor1Sec;
-
-                // Enforce lower bound for actual time range
-                if (progress < minProgressFor1Sec) {
-                    progress = minProgressFor1Sec;
-                    sb.setProgress(progress);
-                    return;
+            public void onProgressChanged(SeekBar sb, int endSec, boolean fromUser) {
+                int startSec = seekStart.getProgress();
+                if (endSec <= startSec) {
+                    endSec = startSec + 1;
+                    sb.setProgress(endSec);
                 }
-
-                // Enforce that end is at least 1 second after start
-                if (progress < minAllowed) {
-                    progress = Math.min(minAllowed, 100);
-                    sb.setProgress(progress);
-                    return;
-                }
-
-                int endSec = (durationSec * progress) / 100;
                 valueEnd.setText(String.valueOf(endSec));
             }
 
@@ -125,8 +110,8 @@ public class Trim {
 
         // Preview button plays only the selected segment
         buttonPreview.setOnClickListener(previewView -> {
-            int startSec = (durationSec * seekStart.getProgress()) / 100;
-            int endSec = (durationSec * seekEnd.getProgress()) / 100;
+            int startSec = seekStart.getProgress();
+            int endSec = seekEnd.getProgress();
             if (endSec <= startSec) {
                 Toast.makeText(context, "End must be > start", Toast.LENGTH_SHORT).show();
                 return;
@@ -134,44 +119,45 @@ public class Trim {
             musicUtility.playSegment(track.uri(), startSec, endSec);
         });
 
-        // OK Button
+        // OK button: backup original and save new timestamps
         builder.setPositiveButton("OK", (dialog, which) -> {
-            int startSec = (durationSec * seekStart.getProgress()) / 100;
-            int endSec = (durationSec * seekEnd.getProgress()) / 100;
+            int startSec = seekStart.getProgress();
+            int endSec = seekEnd.getProgress();
 
-            // Check if anything actually changed
+            // Only apply if trimmed
             if (startSec > 0 || endSec < durationSec) {
                 try {
                     backupAndOverwrite(track);
-                    timestampsConfig.write(FileManager.getUriHash(track.uri()), new int[]{startSec, endSec});
+                    timestampsConfig.write(
+                            FileManager.getUriHash(track.uri()),
+                            new int[]{startSec, endSec, durationSec}
+                    );
                 } catch (IOException e) {
-                    Toast.makeText(context,
+                    Toast.makeText(
+                            context,
                             "Error during backup/trim: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
+                            Toast.LENGTH_LONG
+                    ).show();
                 }
             }
-            // If slider still at full range (0 to durationSec), just dismiss
             dialog.dismiss();
         });
 
-        // Chancel button
+        // Cancel button
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
         builder.create().show();
     }
 
     private void backupAndOverwrite(Track track) throws IOException {
-        // Use the same PREFS_NAME and KEY_TREE_URI that MainActivity uses
         SharedPreferences prefs =
                 context.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
-
         String treeUriString = prefs.getString(MainActivity.KEY_TREE_URI, null);
         if (treeUriString == null) {
             throw new IOException("No SAF-folder URI saved; cannot locate parent folder.");
         }
 
         Uri musicTreeUri = Uri.parse(treeUriString);
-        // Get a DocumentFile representing the root of that tree
         DocumentFile treeRoot = DocumentFile.fromTreeUri(context, musicTreeUri);
         if (treeRoot == null || !treeRoot.isDirectory()) {
             throw new IOException("Unable to resolve the SAF tree folder as a directory.");
@@ -179,11 +165,10 @@ public class Trim {
 
         DocumentFile backupsFolder = trimUtility.validateBackupFolder(treeRoot);
 
-        // Locate the DocumentFile corresponding to the original track
+        // Find original file in tree
         String fullName = track.title();
         DocumentFile originalDoc = treeRoot.findFile(fullName);
         if (originalDoc == null) {
-            // Fallback
             originalDoc = DocumentFile.fromSingleUri(context, track.uri());
             if (originalDoc == null) {
                 throw new IOException("Cannot locate the original file inside the granted tree.");
@@ -193,11 +178,14 @@ public class Trim {
         Uri originalUri = originalDoc.getUri();
         String backupName = trimUtility.generateBackupName(fullName);
 
-        // If a backup with that name already exists in “Backups”, skip creation.
-        // Otherwise create the new file and copy bytes from the original to the backup.
+        // Only create a new backup if one doesn't already exist
         if (backupsFolder.findFile(backupName) == null) {
-            trimUtility.backUpFile(backupsFolder,
-                    originalUri, context.getContentResolver().getType(originalUri), backupName);
+            trimUtility.backUpFile(
+                    backupsFolder,
+                    originalUri,
+                    context.getContentResolver().getType(originalUri),
+                    backupName
+            );
         }
 
         Toast.makeText(

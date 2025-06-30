@@ -26,7 +26,7 @@ public class FileManager {
     }
 
     public static String getUriHash(Uri uri) {
-        return UUID.nameUUIDFromBytes(uri.toString().getBytes(StandardCharsets.UTF_8)).toString();
+        return uri.toString();
     }
 
     /**
@@ -49,7 +49,8 @@ public class FileManager {
                 String name = file.getName();
                 if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a"))) {
                     if (timestampsConfig.read(getUriHash(file.getUri()), Integer[].class) == null) {
-                        int[] timestamps = {0, musicUtility.getTrackDuration(file.getUri())};
+                        final int duration = musicUtility.getTrackDuration(file.getUri());
+                        int[] timestamps = {0, duration, duration};
                         timestampsConfig.write(getUriHash(file.getUri()), timestamps);
                     }
                     result.add(new Track(file.getUri(), name));

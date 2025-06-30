@@ -8,6 +8,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.Utility.FileManager;
@@ -39,18 +40,28 @@ public class MusicUtility {
                 FileManager.getUriHash(uri), Integer[].class
         );
 
-        try {
-            mediaPlayer.setDataSource(context, uri);
+        if (timestamps != null) {
+            int startSeconds = timestamps[0];
+            int endSeconds = timestamps[1];
+            Log.i("Duration", String.valueOf(endSeconds));
 
-            boolean trimmed = timestamps != null && timestamps.length > 1;
-            final int startMs = trimmed ? timestamps[0] * 1000 : 0;
-            final int durationMs = trimmed ? (timestamps[1] - timestamps[0]) * 1000 : 0;
-
-            if (startMs == durationMs) {
+            if (startSeconds == endSeconds) {
                 Toast.makeText(context,
                         "Start and End time are the same!", Toast.LENGTH_SHORT).show();
                 return;
             }
+            playSegment(uri, startSeconds, endSeconds);
+            return;
+        }
+
+        try {
+            // Since no custom start was found we start from the beginning
+            int startMs = 0;
+
+            // Get the duration of the track
+            int durationMs = getTrackDuration(uri) * 1000;
+
+            mediaPlayer.setDataSource(context, uri);
 
             mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startMs));
 
@@ -87,6 +98,8 @@ public class MusicUtility {
             mediaPlayer = null;
         }
         mediaPlayer = new MediaPlayer();
+        Log.i("Start", String.valueOf(startSec));
+        Log.i("End", String.valueOf(endSec));
         try {
             mediaPlayer.setDataSource(context, uri);
             mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));
