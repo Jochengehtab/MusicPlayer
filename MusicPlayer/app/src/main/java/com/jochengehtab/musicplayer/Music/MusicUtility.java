@@ -165,7 +165,7 @@ public class MusicUtility {
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve duration", e);
         }
-        
+
         throw new RuntimeException("Found no length for URI: " + uri);
     }
 
