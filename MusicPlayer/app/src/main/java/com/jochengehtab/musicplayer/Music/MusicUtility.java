@@ -154,22 +154,19 @@ public class MusicUtility {
         }
     }
 
-    /**
-     * @param uri The {@link Uri} to the file
-     * @return The duration of the track in seconds
-     */
     public int getTrackDuration(Uri uri) {
-        int durationMs;
-        // Determine track duration in seconds
-        try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
-            retriever.setDataSource(context, uri);
-            durationMs = Integer.parseInt(Objects.requireNonNull(retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION)));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        try {
+            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
+            if (mediaPlayer != null) {
+                int durationMs = mediaPlayer.getDuration();
+                mediaPlayer.release();
+                return (durationMs + 500) / 1000;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve duration", e);
         }
-
-        return Math.round((float) durationMs / 1000);
+        
+        throw new RuntimeException("Found no length for URI: " + uri);
     }
 
     public void pause() {
