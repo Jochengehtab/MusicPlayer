@@ -46,7 +46,7 @@ public class MusicUtility {
                         "Start and End time are the same!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            playSegment(uri, startSeconds, endSeconds);
+            playSegment(uri, startSeconds, endSeconds, listener);
             return;
         }
 
@@ -88,7 +88,7 @@ public class MusicUtility {
      * Play a segment of the given URI from startSec to endSec (in seconds).
      * Stops automatically at endSec.
      */
-    public void playSegment(Uri uri, int startSec, int endSec) {
+    public void playSegment(Uri uri, int startSec, int endSec, OnPlaybackStateListener listener) {
         if (isInitialized()) {
             mediaPlayer.release();
             mediaPlayer = null;
@@ -100,10 +100,13 @@ public class MusicUtility {
             mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));
             mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
                 mediaPlayer.start();
+                // Notify the listener that playback has started
+                if (listener != null) {
+                    listener.onPlaybackStarted();
+                }
+
                 int durationMs = (endSec - startSec) * 1000;
                 handler.postDelayed(() -> {
-                    // Note: The captured lambda variable is also named 'mediaPlayer'
-                    // We compare it to the class instance 'this.mediaPlayer'
                     if (mediaPlayer != this.mediaPlayer) {
                         return; // This player is stale, do nothing
                     }
@@ -111,6 +114,12 @@ public class MusicUtility {
                     if (this.mediaPlayer.isPlaying()) {
                         this.mediaPlayer.pause();
                     }
+
+                    // Notify the listener that playback has stopped
+                    if (listener != null) {
+                        listener.onPlaybackStopped();
+                    }
+
                 }, durationMs);
             });
 
