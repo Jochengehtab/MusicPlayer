@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -102,7 +103,8 @@ public class MainActivity extends AppCompatActivity {
                     bottomTitle.setText(track.title());
                     musicUtility.play(track.uri(), playbackListener);
                 },
-                musicUtility
+                musicUtility,
+                this::updateBottomPlay
         );
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
@@ -137,16 +139,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void updateBottomPlay(boolean forceUpdate) {
-
-        bottomPlay.toggleIsPlayIconShowing();
         if (forceUpdate) {
             if (bottomPlay.isPlayIconShowing()) {
                 bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
             } else {
                 bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
             }
+            bottomPlay.toggleIsPlayIconShowing();
             return;
         }
+
+        assert lastTrack.uri() != null;
 
         if (musicUtility.isPlaying()) {
             musicUtility.pause();
@@ -157,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             musicUtility.play(lastTrack.uri(), playbackListener);
         }
+        bottomPlay.toggleIsPlayIconShowing();
     }
 
     public void updateBottomTitle(String newTitle) {

@@ -1,6 +1,7 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +19,7 @@ import com.jochengehtab.musicplayer.R;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * RecyclerView.Adapter that binds a list of Track records into item_track.xml rows,
@@ -31,12 +33,14 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
+    private final Consumer<Boolean> updateBottomPlay;
 
     public TrackAdapter(
             Context context,
             List<Track> initialTracks,
             OnItemClickListener listener,
-            MusicUtility musicUtility
+            MusicUtility musicUtility,
+            Consumer<Boolean> updateBottomPlay
     ) {
         this.context = context;
         this.listener = listener;
@@ -44,6 +48,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.trim = new Trim(context, musicUtility);
         this.rename = new Rename(context);
         this.reset = new Reset();
+        this.updateBottomPlay = updateBottomPlay;
     }
 
     @NonNull
@@ -59,7 +64,11 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         Track current = tracks.get(position);
         holder.titleText.setText(current.title());
 
-        holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
+        // Handles clicks on a track in the list
+        holder.itemView.setOnClickListener(v -> {
+            updateBottomPlay.accept(true);
+            listener.onItemClick(current);
+        });
 
         holder.overflowIcon.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, holder.overflowIcon);
