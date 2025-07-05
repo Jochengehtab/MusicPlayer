@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.Music;
 
-import android.util.Log;
-
 import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
@@ -23,11 +21,11 @@ public class MusicPlayer {
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
     private final Consumer<String> updateBottomTitle;
-    private final Consumer<Boolean> updateBottomPlay;
+    private final Runnable updateBottomPlayIcon;
 
-    public MusicPlayer(MusicUtility musicUtility, Consumer<String> updateBottomTitle, Consumer<Boolean> updateBottomPlay) {
+    public MusicPlayer(MusicUtility musicUtility, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.musicUtility = musicUtility;
-        this.updateBottomPlay = updateBottomPlay;
+        this.updateBottomPlayIcon = updateBottomPlayIcon;
         this.updateBottomTitle = updateBottomTitle;
     }
 
@@ -52,22 +50,22 @@ public class MusicPlayer {
     private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
             MainActivity.isMixPlaying = false;
-            updateBottomPlay.accept(true);
+            updateBottomPlayIcon.run();
             return;
         }
         if (currentIndex >= playQueue.size()) {
             mixEnabled = false;
             MainActivity.isMixPlaying = false;
-            updateBottomPlay.accept(true);
+            updateBottomPlayIcon.run();
             if (!loopEnabled) {
                 return;
             }
             currentIndex = 0;
         }
 
-        Track nextUri = playQueue.get(currentIndex);
-        updateBottomTitle.accept(nextUri.title());
-        musicUtility.play(nextUri.uri(), new OnPlaybackStateListener() {
+        Track nextTrack = playQueue.get(currentIndex);
+        updateBottomTitle.accept(nextTrack.title());
+        musicUtility.play(nextTrack.uri(), new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {}
 
@@ -99,6 +97,9 @@ public class MusicPlayer {
     }
 
     public synchronized Track getCurrentTitle() {
+        if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {
+            return null;
+        }
         return playQueue.get(currentIndex);
     }
 
@@ -108,4 +109,3 @@ public class MusicPlayer {
         mixEnabled = false;
     }
 }
-

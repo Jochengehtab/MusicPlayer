@@ -42,7 +42,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <com.jochengehtab.musicplayer.MainActivity.BottomPlayButton
+        <ImageButton
             android:id="@+id/bottom_play"
             android:layout_width="48dp"
             android:layout_height="48dp"

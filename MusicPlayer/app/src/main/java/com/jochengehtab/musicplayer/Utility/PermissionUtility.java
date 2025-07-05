@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer.MainActivity;
+package com.jochengehtab.musicplayer.Utility;
 
 import android.content.ContentResolver;
 import android.content.UriPermission;

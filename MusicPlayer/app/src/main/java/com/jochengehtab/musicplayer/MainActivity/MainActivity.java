@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +25,7 @@ import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
+import com.jochengehtab.musicplayer.Utility.PermissionUtility;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static boolean isMixPlaying = false;
     private TextView bottomTitle;
-    private BottomPlayButton bottomPlay;
+    private ImageButton bottomPlay;
     private OnPlaybackStateListener playbackListener;
 
     @Override
@@ -65,32 +65,27 @@ public class MainActivity extends AppCompatActivity {
         restorePreferences();
 
         musicUtility = new MusicUtility(this);
-        musicPlayer = new MusicPlayer(musicUtility, this::updateBottomTitle, this::updateBottomPlay);
+        musicPlayer = new MusicPlayer(musicUtility, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         initFolderChooser();
 
-        // Music List
         RecyclerView musicList = findViewById(R.id.musicList);
-
-        // UI refs
         MaterialButton chooseButton = findViewById(R.id.choose);
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
 
-        // Playback listener toggles icon
+        // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
         playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
-                runOnUiThread(() ->
-                        bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp)
-                );
+                // We can optionally call the update method here for robustness,
+                // but the immediate UI change is handled on click.
+                runOnUiThread(MainActivity.this::updatePlayButtonIcon);
             }
 
             @Override
             public void onPlaybackStopped() {
-                runOnUiThread(() ->
-                        bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp)
-                );
+                runOnUiThread(MainActivity.this::updatePlayButtonIcon);
             }
         };
 
@@ -101,10 +96,12 @@ public class MainActivity extends AppCompatActivity {
                     musicPlayer.cancelMix();
                     lastTrack = track;
                     bottomTitle.setText(track.title());
+                    bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+
+                    // Start playing the music
                     musicUtility.play(track.uri(), playbackListener);
                 },
-                musicUtility,
-                this::updateBottomPlay
+                musicUtility
         );
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
@@ -131,36 +128,55 @@ public class MainActivity extends AppCompatActivity {
         BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
-
-        bottomPlay.setOnClickListener(v -> updateBottomPlay(false));
+        bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
     }
 
-    public void updateBottomPlay(boolean forceUpdate) {
-        if (forceUpdate) {
-            if (bottomPlay.isPlayIconShowing()) {
-                bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-            } else {
-                bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-            }
-            bottomPlay.toggleIsPlayIconShowing();
+    /**
+     * Handles clicks on the main play/pause button.
+     */
+    private void handlePlayPauseClick() {
+        // If a mix is playing, the main button's job is just to cancel it.
+        if (isMixPlaying) {
+            musicPlayer.stopAndCancel();
+            updatePlayButtonIcon();
             return;
         }
 
-        assert lastTrack.uri() != null;
+        // If no track has ever been selected, do nothing.
+        if (lastTrack == null) {
+            return;
+        }
 
+        // If a song is currently playing, pause it.
         if (musicUtility.isPlaying()) {
             musicUtility.pause();
-            bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
-        } else if (musicUtility.isInitialized()) {
+        }
+        // If a song is paused (initialized but not playing), resume it.
+        else if (musicUtility.isInitialized()) {
             musicUtility.resume();
-            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-        } else {
+        }
+        // If there's no song loaded in the player, play the last selected one.
+        else {
             musicUtility.play(lastTrack.uri(), playbackListener);
         }
-        bottomPlay.toggleIsPlayIconShowing();
+
+        // After any action, update the icon to reflect the new state.
+        updatePlayButtonIcon();
+    }
+
+    /**
+     * Updates the play/pause icon based ONLY on the MusicUtility's current state.
+     * This is the single source of truth for what icon should be displayed.
+     */
+    public void updatePlayButtonIcon() {
+        if (musicUtility.isPlaying()) {
+            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+        } else {
+            bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
+        }
     }
 
     public void updateBottomTitle(String newTitle) {
@@ -175,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
     private void restorePreferences() {
         String uriStr = prefs.getString(KEY_TREE_URI, null);
         if (uriStr != null) {
-            // Parse the URI
             musicDirectoryUri = Uri.parse(uriStr);
         }
     }
@@ -186,19 +201,11 @@ public class MainActivity extends AppCompatActivity {
                 uri -> {
                     if (uri != null) {
                         getContentResolver().takePersistableUriPermission(uri, takeFlags);
-
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
                         musicDirectoryUri = uri;
 
-                        timestampsConfig = new JSON(
-                                MainActivity.this,
-                                PREFS_NAME,
-                                KEY_TREE_URI,
-                                "timestamps.json"
-                        );
-                        fileManager = new FileManager(
-                                musicDirectoryUri, MainActivity.this, musicUtility
-                        );
+                        timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+                        fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
                         loadAndShowTracks();
                     } else {
                         Toast.makeText(this, "No folder selected.", Toast.LENGTH_SHORT).show();

@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,13 +18,7 @@ import com.jochengehtab.musicplayer.R;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
-/**
- * RecyclerView.Adapter that binds a list of Track records into item_track.xml rows,
- * shows a three‐dot overflow menu, and uses DiffUtil to dispatch updates.
- * The “Edit” (action_rename) menu shows a trim dialog with sliders.
- */
 public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Context context;
     private final OnItemClickListener listener;
@@ -33,14 +26,12 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
-    private final Consumer<Boolean> updateBottomPlay;
 
     public TrackAdapter(
             Context context,
             List<Track> initialTracks,
             OnItemClickListener listener,
-            MusicUtility musicUtility,
-            Consumer<Boolean> updateBottomPlay
+            MusicUtility musicUtility
     ) {
         this.context = context;
         this.listener = listener;
@@ -48,7 +39,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.trim = new Trim(context, musicUtility);
         this.rename = new Rename(context);
         this.reset = new Reset();
-        this.updateBottomPlay = updateBottomPlay;
     }
 
     @NonNull
@@ -66,7 +56,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
         // Handles clicks on a track in the list
         holder.itemView.setOnClickListener(v -> {
-            updateBottomPlay.accept(true);
             listener.onItemClick(current);
         });
 
@@ -101,10 +90,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         return tracks.size();
     }
 
-    /**
-     * Replace the adapter’s contents with newList, using DiffUtil
-     * to compute minimal insert/remove/change operations.
-     */
     public void updateList(List<Track> newList) {
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
                 new TrackDiffCallback(this.tracks, newList)
