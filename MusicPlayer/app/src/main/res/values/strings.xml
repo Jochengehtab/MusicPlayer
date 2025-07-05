@@ -17,6 +17,10 @@
     <string name="_0">0</string>
     <string name="start_sec">Start (sec):</string>
     <string name="play_preview">Play Preview</string>
+    <string name="menu">Menu</string>
+    <string name="new_playlist">New Playlist</string>
+    <string name="select_playlist">Select Playlist</string>
+    <string name="cancel">Cancel</string>
     <string-array name="playback_options">
         <item>Loop</item>
         <item>Mix</item>

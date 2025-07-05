@@ -5,13 +5,20 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -53,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private OnPlaybackStateListener playbackListener;
+    private ImageButton burgerMenu;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -132,6 +140,101 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
+
+        burgerMenu = findViewById(R.id.burger_menu);
+        burgerMenu.setOnClickListener(v -> showPlaylistDialog());
+    }
+
+    private void showPlaylistDialog() {
+        // Prevent crash if folder hasn't been chosen yet
+        if (fileManager == null) {
+            Toast.makeText(this, "Please select a music directory first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_playlist_selector, null);
+        RecyclerView playlistRv = dialogView.findViewById(R.id.playlist_list);
+        Button newPlaylistButton = dialogView.findViewById(R.id.button_create_playlist);
+        Button cancelButton = dialogView.findViewById(R.id.button_cancel); // Get the cancel button
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+
+        // 1. Load existing playlist names
+        List<String> playlists = fileManager.listFolders();
+
+        // 2. Setup RecyclerView with a simple adapter
+        playlistRv.setLayoutManager(new LinearLayoutManager(this));
+
+        ArrayAdapter<String> playlistAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, playlists);
+
+        playlistRv.setAdapter(new RecyclerView.Adapter<PlaylistViewHolder>() {
+            @NonNull
+            @Override
+            public PlaylistViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                View v = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, parent, false);
+                return new PlaylistViewHolder(v);
+            }
+
+            @Override
+            public void onBindViewHolder(@NonNull PlaylistViewHolder holder, int position) {
+                String playlistName = playlists.get(position);
+                holder.text1.setText(playlistName);
+                holder.itemView.setOnClickListener(v -> {
+                    // Handle playlist selection
+                    Toast.makeText(MainActivity.this, "Selected: " + playlistName, Toast.LENGTH_SHORT).show();
+                    // Here you would typically load the songs from that playlist
+                    dialog.dismiss();
+                });
+            }
+
+            @Override
+            public int getItemCount() {
+                return playlists.size();
+            }
+        });
+
+
+        // 3. Handle "Create New" button
+        newPlaylistButton.setOnClickListener(v -> {
+            dialog.dismiss(); // Close the current dialog before opening another
+            showCreatePlaylistDialog();
+        });
+
+        // 4. Handle "Cancel" button
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+    /**
+     * Shows a dialog to get the name for a new playlist.
+     */
+    private void showCreatePlaylistDialog() {
+        final EditText input = new EditText(this);
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Enter Playlist Name")
+                .setView(input)
+                .setPositiveButton("Create", (d, which) -> {
+                    String name = input.getText().toString().trim();
+                    if (!name.isEmpty()) {
+                        if (fileManager.createFolder(name)) {
+                            Toast.makeText(this, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
+                            // Reopen the playlist selector to show the new playlist
+                            showPlaylistDialog();
+                        } else {
+                            Toast.makeText(this, "Failed to create playlist.", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(this, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", (d, which) -> {
+                    // If cancelled, show the main playlist dialog again
+                    showPlaylistDialog();
+                })
+                .show();
     }
 
     /**
