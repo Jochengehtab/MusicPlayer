@@ -18,6 +18,8 @@ public class FileManager {
     private final Uri musicDirectoryUri;
     private final Context context;
     private final MusicUtility musicUtility;
+    private static final String PLAYLIST_FILE_NAME = "playlist.json";
+    private static final String TRACKS_KEY = "tracks";
 
     public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
         this.musicDirectoryUri = musicDirectoryUri;
@@ -97,5 +99,60 @@ public class FileManager {
             return newDir != null && newDir.exists();
         }
         return false;
+    }
+
+    /**
+     * Adds a track to a specified playlist's JSON file using the JSON utility.
+     *
+     * @param playlistName The name of the folder representing the playlist.
+     * @param track        The track to add.
+     */
+    public void addTrackToPlaylist(String playlistName, Track track) {
+        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
+        if (rootDir == null) return;
+
+        // 1. Find the playlist directory
+        DocumentFile playlistDir = rootDir.findFile(playlistName);
+        if (playlistDir == null || !playlistDir.isDirectory()) {
+            Toast.makeText(context, "Playlist folder not found!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 2. Find or create the playlist.json file
+        DocumentFile playlistFile = playlistDir.findFile(PLAYLIST_FILE_NAME);
+        if (playlistFile == null) {
+            playlistFile = playlistDir.createFile("application/json", PLAYLIST_FILE_NAME);
+            if (playlistFile == null) {
+                Toast.makeText(context, "Failed to create playlist file!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
+        // 3. Use the JSON utility to read, update, and write
+        try {
+            JSON playlistJson = new JSON(context, playlistFile);
+
+            // Read the existing list of tracks
+            List<Track> playlistTracks = playlistJson.readList(TRACKS_KEY, Track.class);
+            if (playlistTracks == null) {
+                playlistTracks = new ArrayList<>(); // If key doesn't exist, start a new list
+            }
+
+            // Check if track is already in the playlist
+            boolean alreadyExists = playlistTracks.stream().anyMatch(t -> t.uri().equals(track.uri()));
+            if (alreadyExists) {
+                Toast.makeText(context, "Track is already in this playlist.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Add the new track and write the entire list back
+            playlistTracks.add(track);
+            playlistJson.write(TRACKS_KEY, playlistTracks);
+
+            Toast.makeText(context, "Added '" + track.title() + "' to " + playlistName, Toast.LENGTH_SHORT).show();
+
+        } catch (RuntimeException e) {
+            Toast.makeText(context, "Error updating playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 }

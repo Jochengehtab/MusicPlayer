@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -60,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private OnPlaybackStateListener playbackListener;
-    private ImageButton burgerMenu;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -133,6 +131,8 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
+        adapter.setFileManager(fileManager);
+
         BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
 
-        burgerMenu = findViewById(R.id.burger_menu);
+        ImageButton burgerMenu = findViewById(R.id.burger_menu);
         burgerMenu.setOnClickListener(v -> showPlaylistDialog());
     }
 
@@ -166,8 +166,6 @@ public class MainActivity extends AppCompatActivity {
 
         // 2. Setup RecyclerView with a simple adapter
         playlistRv.setLayoutManager(new LinearLayoutManager(this));
-
-        ArrayAdapter<String> playlistAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, playlists);
 
         playlistRv.setAdapter(new RecyclerView.Adapter<PlaylistViewHolder>() {
             @NonNull

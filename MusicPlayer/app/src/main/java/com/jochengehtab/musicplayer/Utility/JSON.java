@@ -71,6 +71,32 @@ public class JSON {
     }
 
     /**
+     * Constructs a JSON manager from a direct DocumentFile reference.
+     * This is ideal for files in subdirectories, like a playlist.
+     *
+     * @param context    Android context
+     * @param configFile The DocumentFile representing the JSON file.
+     * @throws RuntimeException if the configFile is invalid or cannot be initialized.
+     */
+    public JSON(Context context, DocumentFile configFile) {
+        this.context = context.getApplicationContext();
+        this.configFile = configFile;
+
+        // Ensure the file is not empty to prevent parsing errors
+        try {
+            if (configFile.length() == 0) {
+                // Initialize with an empty JSON object
+                try (Writer w = new OutputStreamWriter(
+                        context.getContentResolver().openOutputStream(configFile.getUri()), StandardCharsets.UTF_8)) {
+                    w.write("{}");
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to initialize config file: " + configFile.getName(), e);
+        }
+    }
+
+    /**
      * Writes a named value into the JSON file. Previous entries are preserved.
      * Supports primitives, objects, lists, and arrays.
      *

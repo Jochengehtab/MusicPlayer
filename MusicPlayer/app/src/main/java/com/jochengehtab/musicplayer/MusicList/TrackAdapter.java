@@ -4,9 +4,12 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -15,6 +18,7 @@ import com.jochengehtab.musicplayer.MusicList.Options.Rename;
 import com.jochengehtab.musicplayer.MusicList.Options.Reset;
 import com.jochengehtab.musicplayer.MusicList.Options.Trim;
 import com.jochengehtab.musicplayer.R;
+import com.jochengehtab.musicplayer.Utility.FileManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +30,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
+    private FileManager fileManager;
 
     public TrackAdapter(
             Context context,
@@ -65,7 +70,10 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
-                if (id == R.id.edit) {
+                if (id == R.id.action_add_to_playlist) {
+                    showPlaylistSelectionDialog(current); // Call the new method
+                    return true;
+                } else if (id == R.id.edit) {
                     trim.showTrimDialog(current);
                     return true;
                 } else if (id == R.id.action_rename) {
@@ -84,6 +92,44 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             popup.show();
         });
     }
+
+    /**
+     * Shows a dialog with a list of available playlists to add a track to.
+     * @param track The track to be added.
+     */
+    private void showPlaylistSelectionDialog(Track track) {
+        if (fileManager == null) {
+            Toast.makeText(context, "FileManager not available.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<String> playlists = fileManager.listFolders();
+
+        if (playlists.isEmpty()) {
+            Toast.makeText(context, "No playlists created yet.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_list_item_1,
+                playlists
+        );
+
+        new AlertDialog.Builder(context)
+                .setTitle("Add to playlist...")
+                .setAdapter(adapter, (dialog, which) -> {
+                    String selectedPlaylist = playlists.get(which);
+                    fileManager.addTrackToPlaylist(selectedPlaylist, track);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    public void setFileManager(FileManager fileManager) {
+        this.fileManager = fileManager;
+    }
+
 
     @Override
     public int getItemCount() {
