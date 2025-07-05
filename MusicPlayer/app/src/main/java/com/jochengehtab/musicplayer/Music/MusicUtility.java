@@ -3,18 +3,15 @@ package com.jochengehtab.musicplayer.Music;
 import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
 
 import android.content.Context;
-import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public class MusicUtility {
     private final Context context;

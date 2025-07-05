@@ -57,7 +57,7 @@ public class Trim {
         seekEnd.setProgress(timestamps[1]);
         valueStart.setText(String.valueOf(timestamps[0]));
         valueEnd.setText(String.valueOf(timestamps[1]));
-        
+
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int startSec, boolean fromUser) {
