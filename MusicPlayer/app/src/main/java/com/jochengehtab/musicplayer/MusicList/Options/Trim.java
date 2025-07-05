@@ -3,8 +3,6 @@ package com.jochengehtab.musicplayer.MusicList.Options;
 import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -13,25 +11,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog.Builder;
-import androidx.documentfile.provider.DocumentFile;
 
-import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
-import java.io.IOException;
-
 public class Trim {
     private final Context context;
     private final MusicUtility musicUtility;
-    private final TrimUtility trimUtility;
 
     public Trim(Context context, MusicUtility musicUtility) {
         this.context = context;
         this.musicUtility = musicUtility;
-        this.trimUtility = new TrimUtility(context);
     }
 
     /**
@@ -126,19 +118,10 @@ public class Trim {
 
             // Only apply if trimmed
             if (startSec > 0 || endSec < durationSec) {
-                //try {
-                    //backupAndOverwrite(track);
-                    timestampsConfig.write(
-                            FileManager.getUriHash(track.uri()),
-                            new int[]{startSec, endSec, durationSec}
-                    );
-                /*} catch (IOException e) {
-                    Toast.makeText(
-                            context,
-                            "Error during backup/trim: " + e.getMessage(),
-                            Toast.LENGTH_LONG
-                    ).show();
-                }*/
+                timestampsConfig.write(
+                        FileManager.getUriHash(track.uri()),
+                        new int[]{startSec, endSec, durationSec}
+                );
             }
             dialog.dismiss();
         });
@@ -147,51 +130,5 @@ public class Trim {
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
         builder.create().show();
-    }
-
-    private void backupAndOverwrite(Track track) throws IOException {
-        SharedPreferences prefs =
-                context.getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
-        String treeUriString = prefs.getString(MainActivity.KEY_TREE_URI, null);
-        if (treeUriString == null) {
-            throw new IOException("No SAF-folder URI saved; cannot locate parent folder.");
-        }
-
-        Uri musicTreeUri = Uri.parse(treeUriString);
-        DocumentFile treeRoot = DocumentFile.fromTreeUri(context, musicTreeUri);
-        if (treeRoot == null || !treeRoot.isDirectory()) {
-            throw new IOException("Unable to resolve the SAF tree folder as a directory.");
-        }
-
-        DocumentFile backupsFolder = trimUtility.validateBackupFolder(treeRoot);
-
-        // Find original file in tree
-        String fullName = track.title();
-        DocumentFile originalDoc = treeRoot.findFile(fullName);
-        if (originalDoc == null) {
-            originalDoc = DocumentFile.fromSingleUri(context, track.uri());
-            if (originalDoc == null) {
-                throw new IOException("Cannot locate the original file inside the granted tree.");
-            }
-        }
-
-        Uri originalUri = originalDoc.getUri();
-        String backupName = trimUtility.generateBackupName(fullName);
-
-        // Only create a new backup if one doesn't already exist
-        if (backupsFolder.findFile(backupName) == null) {
-            trimUtility.backUpFile(
-                    backupsFolder,
-                    originalUri,
-                    context.getContentResolver().getType(originalUri),
-                    backupName
-            );
-        }
-
-        Toast.makeText(
-                context,
-                "Backup created in “Backups/" + backupName + "”. (Trim not implemented.)",
-                Toast.LENGTH_LONG
-        ).show();
     }
 }
