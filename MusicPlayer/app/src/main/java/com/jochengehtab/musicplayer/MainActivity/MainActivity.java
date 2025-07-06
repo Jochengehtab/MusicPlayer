@@ -26,6 +26,7 @@ import com.google.android.material.button.MaterialButton;
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
+import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
@@ -146,7 +147,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showPlaylistDialog() {
-        // Prevent crash if folder hasn't been chosen yet
         if (fileManager == null) {
             Toast.makeText(this, "Please select a music directory first.", Toast.LENGTH_SHORT).show();
             return;
@@ -155,52 +155,56 @@ public class MainActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_playlist_selector, null);
         RecyclerView playlistRv = dialogView.findViewById(R.id.playlist_list);
         Button newPlaylistButton = dialogView.findViewById(R.id.button_create_playlist);
-        Button cancelButton = dialogView.findViewById(R.id.button_cancel); // Get the cancel button
+        Button cancelButton = dialogView.findViewById(R.id.button_cancel);
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(dialogView)
                 .create();
 
-        // 1. Load existing playlist names
         List<String> playlists = fileManager.listFolders();
 
-        // 2. Setup RecyclerView with a simple adapter
         playlistRv.setLayoutManager(new LinearLayoutManager(this));
 
-        playlistRv.setAdapter(new RecyclerView.Adapter<PlaylistViewHolder>() {
-            @NonNull
+        // Use the new PlaylistAdapter
+        PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistAdapter.PlaylistActionsListener() {
             @Override
-            public PlaylistViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-                View v = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, parent, false);
-                return new PlaylistViewHolder(v);
+            public void onPlayClicked(String playlistName) {
+                dialog.dismiss();
+                List<Track> playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
+                if (!playlistTracks.isEmpty()) {
+                    musicPlayer.playList(playlistTracks);
+                    updatePlayButtonIcon();
+                    Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
+                }
             }
 
             @Override
-            public void onBindViewHolder(@NonNull PlaylistViewHolder holder, int position) {
-                String playlistName = playlists.get(position);
-                holder.text1.setText(playlistName);
-                holder.itemView.setOnClickListener(v -> {
-                    // Handle playlist selection
-                    Toast.makeText(MainActivity.this, "Selected: " + playlistName, Toast.LENGTH_SHORT).show();
-                    // Here you would typically load the songs from that playlist
-                    dialog.dismiss();
-                });
-            }
-
-            @Override
-            public int getItemCount() {
-                return playlists.size();
+            public void onDeleteClicked(String playlistName) {
+                // Show a confirmation dialog before deleting
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Delete Playlist")
+                        .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
+                        .setPositiveButton("Delete", (d, which) -> {
+                            if (fileManager.deletePlaylist(playlistName)) {
+                                dialog.dismiss();
+                                // Refresh the dialog to show the updated list
+                                showPlaylistDialog();
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
             }
         });
 
+        playlistRv.setAdapter(playlistAdapter);
 
-        // 3. Handle "Create New" button
         newPlaylistButton.setOnClickListener(v -> {
-            dialog.dismiss(); // Close the current dialog before opening another
+            dialog.dismiss();
             showCreatePlaylistDialog();
         });
 
-        // 4. Handle "Cancel" button
         cancelButton.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
@@ -239,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
      * Handles clicks on the main play/pause button.
      */
     private void handlePlayPauseClick() {
-        // If a mix is playing, the main button's job is just to cancel it.
+        // If a mix or playlist is playing, the main button's job is to cancel it.
         if (isMixPlaying) {
             musicPlayer.stopAndCancel();
             updatePlayButtonIcon();
@@ -269,11 +273,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Updates the play/pause icon based ONLY on the MusicUtility's current state.
-     * This is the single source of truth for what icon should be displayed.
+     * Updates the play/pause icon based on the app's state.
+     * It shows a stop icon if a playlist is active OR a single track is playing.
      */
     public void updatePlayButtonIcon() {
-        if (musicUtility.isPlaying()) {
+        if (isMixPlaying || musicUtility.isPlaying()) {
             bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
         } else {
             bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
@@ -307,6 +311,7 @@ public class MainActivity extends AppCompatActivity {
 
                         timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                         fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
+                        adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
                         loadAndShowTracks();
                     } else {
                         Toast.makeText(this, "No folder selected.", Toast.LENGTH_SHORT).show();

@@ -1,6 +1,7 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -109,6 +110,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             Toast.makeText(context, "No playlists created yet.", Toast.LENGTH_SHORT).show();
             return;
         }
+
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 context,

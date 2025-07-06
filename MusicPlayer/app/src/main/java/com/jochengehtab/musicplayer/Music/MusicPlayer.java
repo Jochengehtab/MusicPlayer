@@ -38,6 +38,7 @@ public class MusicPlayer {
         cancelToken.set(false);
 
         mixEnabled = true;
+        MainActivity.isMixPlaying = true;
         loopEnabled = false;
 
         playQueue = new ArrayList<>(musicFiles);
@@ -46,6 +47,27 @@ public class MusicPlayer {
 
         playNextInQueue();
     }
+
+    /**
+     * Plays a given list of tracks in order.
+     * @param musicFiles The list of tracks to play.
+     */
+    public synchronized void playList(List<Track> musicFiles) {
+        if (musicFiles == null || musicFiles.isEmpty()) {
+            return;
+        }
+        cancelToken.set(false);
+
+        mixEnabled = true; // Treat as a "mix" for playback control
+        MainActivity.isMixPlaying = true;
+        loopEnabled = false;
+
+        playQueue = new ArrayList<>(musicFiles); // No shuffle
+        currentIndex = 0;
+
+        playNextInQueue();
+    }
+
 
     private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
@@ -94,6 +116,7 @@ public class MusicPlayer {
     public synchronized void cancelMix() {
         cancelToken.set(true);
         mixEnabled = false;
+        MainActivity.isMixPlaying = false;
     }
 
     public synchronized Track getCurrentTitle() {
@@ -107,5 +130,6 @@ public class MusicPlayer {
         cancelToken.set(true);
         musicUtility.stopAndRelease();
         mixEnabled = false;
+        MainActivity.isMixPlaying = false;
     }
 }
