@@ -40,7 +40,6 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
-    // NEW: A constant for our special playlist name
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
     public static JSON timestampsConfig;
     public static boolean isMixPlaying = false;
