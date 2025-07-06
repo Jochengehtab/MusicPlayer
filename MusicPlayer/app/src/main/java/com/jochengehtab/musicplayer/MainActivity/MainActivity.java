@@ -40,6 +40,8 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
+    // NEW: A constant for our special playlist name
+    public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
     public static JSON timestampsConfig;
     public static boolean isMixPlaying = false;
     private final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -156,7 +158,9 @@ public class MainActivity extends AppCompatActivity {
                 .setView(dialogView)
                 .create();
 
+        // Get folder list and add our special "All Tracks" playlist to the top
         List<String> playlists = fileManager.listFolders();
+        playlists.add(0, ALL_TRACKS_PLAYLIST_NAME);
 
         playlistRv.setLayoutManager(new LinearLayoutManager(this));
 
@@ -165,18 +169,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlayClicked(String playlistName) {
                 dialog.dismiss();
-                List<Track> playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
-                if (!playlistTracks.isEmpty()) {
-                    musicPlayer.playList(playlistTracks);
-                    updatePlayButtonIcon();
-                    Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
-                }
+                loadPlaylistAndPlay(playlistName);
             }
 
             @Override
             public void onDeleteClicked(String playlistName) {
+                // Add a safety check to prevent deleting the "All Tracks" list
+                if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
+                    Toast.makeText(MainActivity.this, "Cannot delete 'All Tracks' list.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 // Show a confirmation dialog before deleting
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("Delete Playlist")
@@ -281,6 +284,35 @@ public class MainActivity extends AppCompatActivity {
 
     public void updateBottomTitle(String newTitle) {
         bottomTitle.setText(newTitle);
+    }
+
+    /**
+     * Loads tracks, updates the main RecyclerView, and starts playback for a playlist.
+     * This handles the special "All Tracks" case and reloads the UI as requested.
+     * @param playlistName The name of the playlist to load and play.
+     */
+    private void loadPlaylistAndPlay(String playlistName) {
+        List<Track> playlistTracks;
+
+        if (ALL_TRACKS_PLAYLIST_NAME.equals(playlistName)) {
+            // Case 1: The "All Tracks" virtual playlist is selected. Load all music files.
+            playlistTracks = fileManager.loadMusicFiles();
+        } else {
+            // Case 2: A regular playlist (sub-folder) is selected.
+            playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
+        }
+
+        // KEY CHANGE: Reload the main music list in the UI to show the selected playlist's tracks.
+        adapter.updateList(playlistTracks);
+
+        // Now, start playing the loaded list.
+        if (!playlistTracks.isEmpty()) {
+            musicPlayer.playList(playlistTracks);
+            updatePlayButtonIcon();
+            Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void loadAndShowTracks() {
