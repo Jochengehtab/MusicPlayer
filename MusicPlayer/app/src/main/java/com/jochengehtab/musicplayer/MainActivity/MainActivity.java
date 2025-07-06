@@ -6,7 +6,6 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -15,7 +14,6 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +24,7 @@ import com.google.android.material.button.MaterialButton;
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
+import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
 import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
@@ -166,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
         playlistRv.setLayoutManager(new LinearLayoutManager(this));
 
         // Use the new PlaylistAdapter
-        PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistAdapter.PlaylistActionsListener() {
+        PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistActionsListener() {
             @Override
             public void onPlayClicked(String playlistName) {
                 dialog.dismiss();

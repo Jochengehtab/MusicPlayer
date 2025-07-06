@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.content.Context;
-import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -11,8 +10,6 @@ import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
-
-import java.util.function.Consumer;
 
 public class BottomOptions {
     private final Context context;

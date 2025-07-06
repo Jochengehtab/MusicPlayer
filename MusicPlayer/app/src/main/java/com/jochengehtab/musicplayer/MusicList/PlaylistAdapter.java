@@ -4,9 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.PopupMenu;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,16 +13,11 @@ import com.jochengehtab.musicplayer.R;
 
 import java.util.List;
 
-public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.PlaylistViewHolder> {
+public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistViewHolder> {
 
     private final Context context;
     private final List<String> playlists;
     private final PlaylistActionsListener listener;
-
-    public interface PlaylistActionsListener {
-        void onPlayClicked(String playlistName);
-        void onDeleteClicked(String playlistName);
-    }
 
     public PlaylistAdapter(Context context, List<String> playlists, PlaylistActionsListener listener) {
         this.context = context;
@@ -66,16 +59,5 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
     @Override
     public int getItemCount() {
         return playlists.size();
-    }
-
-    static class PlaylistViewHolder extends RecyclerView.ViewHolder {
-        TextView playlistNameText;
-        ImageButton optionsButton;
-
-        public PlaylistViewHolder(@NonNull View itemView) {
-            super(itemView);
-            playlistNameText = itemView.findViewById(R.id.playlist_name);
-            optionsButton = itemView.findViewById(R.id.playlist_options);
-        }
     }
 }

@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -61,9 +60,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         holder.titleText.setText(current.title());
 
         // Handles clicks on a track in the list
-        holder.itemView.setOnClickListener(v -> {
-            listener.onItemClick(current);
-        });
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
 
         holder.overflowIcon.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, holder.overflowIcon);
