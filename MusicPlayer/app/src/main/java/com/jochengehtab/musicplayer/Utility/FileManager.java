@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.Utility;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
-
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
@@ -52,11 +50,6 @@ public class FileManager {
             if (file.isFile()) {
                 String name = file.getName();
                 if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a"))) {
-                    if (timestampsConfig.read(getUriHash(file.getUri()), Integer[].class) == null) {
-                        final int duration = musicUtility.getTrackDuration(file.getUri());
-                        int[] timestamps = {0, duration, duration};
-                        timestampsConfig.write(getUriHash(file.getUri()), timestamps);
-                    }
                     result.add(new Track(file.getUri(), name));
                 }
             }

@@ -30,58 +30,58 @@ public class MusicUtility {
         if (isInitialized()) {
             mediaPlayer.release();
         }
-
         mediaPlayer = new MediaPlayer();
 
+        // Try to read existing timestamps
         Integer[] timestamps = timestampsConfig.readArray(
                 FileManager.getUriHash(uri), Integer[].class
         );
 
-        if (timestamps != null) {
-            int startSeconds = timestamps[0];
-            int endSeconds = timestamps[1];
-
-            if (startSeconds == endSeconds) {
-                Toast.makeText(context,
-                        "Start and End time are the same!", Toast.LENGTH_SHORT).show();
+        // If timestamps don't exist, this is a new track.
+        // Calculate duration and write default timestamps now.
+        if (timestamps == null) {
+            try {
+                // This is the expensive call, but now it only happens once per new track.
+                final int duration = getTrackDuration(uri);
+                // Create the default timestamp array [start, end, total_duration]
+                timestamps = new Integer[]{0, duration, duration};
+                // Write it to the config for all future plays
+                timestampsConfig.write(FileManager.getUriHash(uri), timestamps);
+            } catch (RuntimeException e) {
+                Toast.makeText(context, "Error getting track info: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                // Abort playback if we can't get info
+                if (mediaPlayer != null) {
+                    mediaPlayer.release();
+                    mediaPlayer = null;
+                }
+                if (listener != null) {
+                    // Notify UI that nothing is playing
+                    listener.onPlaybackStopped();
+                }
                 return;
             }
-            playSegment(uri, startSeconds, endSeconds, listener);
+        }
+
+        // Now we are guaranteed to have timestamps.
+        int startSeconds = timestamps[0];
+        int endSeconds = timestamps[1];
+
+        if (startSeconds == endSeconds) {
+            Toast.makeText(context,
+                    "Start and End time are the same!", Toast.LENGTH_SHORT).show();
+            // Abort playback
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+            if (listener != null) {
+                listener.onPlaybackStopped();
+            }
             return;
         }
 
-        try {
-            // Since no custom start was found we start from the beginning
-            int startMs = 0;
-
-            // Get the duration of the track
-            int durationMs = getTrackDuration(uri) * 1000;
-
-            mediaPlayer.setDataSource(context, uri);
-
-            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startMs));
-
-            mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
-                mediaPlayer.start();
-                listener.onPlaybackStarted();
-                handler.postDelayed(() -> {
-                    // Only act if the MediaPlayer for this task is still the active one.
-                    if (mediaPlayer != this.mediaPlayer) {
-                        // This player is stale, do nothing.
-                        return;
-                    }
-
-                    if (mediaPlayer.isPlaying()) {
-                        mediaPlayer.pause();
-                    }
-                    listener.onPlaybackStopped();
-                }, durationMs);
-            });
-
-            mediaPlayer.prepareAsync();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        // We can now reliably call playSegment for all cases
+        playSegment(uri, startSeconds, endSeconds, listener);
     }
 
     /**
