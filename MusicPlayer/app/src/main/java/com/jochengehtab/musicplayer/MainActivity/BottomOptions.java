@@ -24,6 +24,7 @@ public class BottomOptions {
         this.musicPlayer = musicPlayer;
         this.fileManager = fileManager;
     }
+
     public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
         bottomOptions.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, bottomOptions);

@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.Objects;
 
 public class FileManager {
+    private static final String PLAYLIST_FILE_NAME = "playlist.json";
+    private static final String TRACKS_KEY = "tracks";
     private final Uri musicDirectoryUri;
     private final Context context;
     private final MusicUtility musicUtility;
-    private static final String PLAYLIST_FILE_NAME = "playlist.json";
-    private static final String TRACKS_KEY = "tracks";
 
     public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
         this.musicDirectoryUri = musicDirectoryUri;
@@ -66,6 +66,7 @@ public class FileManager {
 
     /**
      * Lists all subdirectories within the main music directory.
+     *
      * @return A list of folder names.
      */
     public List<String> listFolders() {
@@ -83,6 +84,7 @@ public class FileManager {
 
     /**
      * Creates a new subfolder in the main music directory.
+     *
      * @param name The name for the new folder.
      * @return true if successful, false otherwise.
      */
@@ -130,13 +132,14 @@ public class FileManager {
             return Objects.requireNonNullElseGet(playlistTracks, ArrayList::new);
         } catch (RuntimeException e) {
             Toast.makeText(context, "Error reading playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            Log.i("e","Error reading playlist: " + e.getMessage() );
+            Log.i("e", "Error reading playlist: " + e.getMessage());
             return new ArrayList<>();
         }
     }
 
     /**
      * Deletes a playlist folder and all its contents.
+     *
      * @param playlistName The name of the playlist to delete.
      * @return true if successful, false otherwise.
      */

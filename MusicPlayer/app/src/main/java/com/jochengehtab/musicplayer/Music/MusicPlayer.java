@@ -13,15 +13,13 @@ import java.util.function.Consumer;
 public class MusicPlayer {
     private final MusicUtility musicUtility;
     private final Random random = new Random();
-
-    private boolean loopEnabled = false;
-    private boolean mixEnabled = false;
-
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
-    private List<Track> playQueue = new ArrayList<>();
-    private int currentIndex = 0;
     private final Consumer<String> updateBottomTitle;
     private final Runnable updateBottomPlayIcon;
+    private boolean loopEnabled = false;
+    private boolean mixEnabled = false;
+    private List<Track> playQueue = new ArrayList<>();
+    private int currentIndex = 0;
 
     public MusicPlayer(MusicUtility musicUtility, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.musicUtility = musicUtility;
@@ -50,6 +48,7 @@ public class MusicPlayer {
 
     /**
      * Plays a given list of tracks in order.
+     *
      * @param musicFiles The list of tracks to play.
      */
     public synchronized void playList(List<Track> musicFiles) {
@@ -89,7 +88,8 @@ public class MusicPlayer {
         updateBottomTitle.accept(nextTrack.title());
         musicUtility.play(nextTrack.uri(), new OnPlaybackStateListener() {
             @Override
-            public void onPlaybackStarted() {}
+            public void onPlaybackStarted() {
+            }
 
             @Override
             public void onPlaybackStopped() {

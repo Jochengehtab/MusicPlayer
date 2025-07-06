@@ -15,8 +15,8 @@ import java.io.IOException;
 
 public class MusicUtility {
     private final Context context;
-    private MediaPlayer mediaPlayer;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private MediaPlayer mediaPlayer;
 
     public MusicUtility(Context context) {
         this.context = context;
@@ -181,7 +181,9 @@ public class MusicUtility {
         }
     }
 
-    /** Resume if paused. */
+    /**
+     * Resume if paused.
+     */
     public void resume() {
         if (isInitialized() && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();

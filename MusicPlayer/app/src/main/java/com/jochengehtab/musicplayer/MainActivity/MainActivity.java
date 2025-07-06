@@ -40,22 +40,18 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
+    public static JSON timestampsConfig;
+    public static boolean isMixPlaying = false;
     private final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
-    public static JSON timestampsConfig;
-
     private Uri musicDirectoryUri;
     private FileManager fileManager;
     private MusicPlayer musicPlayer;
     private MusicUtility musicUtility;
-
     private SharedPreferences prefs;
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
-
     private Track lastTrack;
-
-    public static boolean isMixPlaying = false;
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private OnPlaybackStateListener playbackListener;

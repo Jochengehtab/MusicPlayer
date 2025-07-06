@@ -90,7 +90,8 @@ public class JSON {
         try (Reader reader = new InputStreamReader(
                 context.getContentResolver().openInputStream(configFile.getUri()), StandardCharsets.UTF_8)) {
 
-            Type type = new TypeToken<LinkedHashMap<String, JsonElement>>() {}.getType();
+            Type type = new TypeToken<LinkedHashMap<String, JsonElement>>() {
+            }.getType();
             Map<String, JsonElement> map = gson.fromJson(reader, type);
             return (map != null) ? map : new LinkedHashMap<>();
         }

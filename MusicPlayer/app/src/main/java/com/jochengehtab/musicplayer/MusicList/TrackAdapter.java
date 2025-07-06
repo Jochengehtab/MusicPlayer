@@ -93,6 +93,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
     /**
      * Shows a dialog with a list of available playlists to add a track to.
+     *
      * @param track The track to be added.
      */
     private void showPlaylistSelectionDialog(Track track) {

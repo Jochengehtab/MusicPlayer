@@ -3,6 +3,7 @@ package com.jochengehtab.musicplayer.MusicList.Options;
 import android.content.Context;
 import android.net.Uri;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog.Builder;
 
 import com.jochengehtab.musicplayer.MusicList.Track;
@@ -20,9 +21,10 @@ public class Rename {
 
     /**
      * Shows a rename dialog and invokes updateCallback when rename succeeds.
-     * @param current      the track to rename
-     * @param position     its index in the list
-     * @param tracks       the current list of tracks
+     *
+     * @param current        the track to rename
+     * @param position       its index in the list
+     * @param tracks         the current list of tracks
      * @param updateCallback called with the new list after successful rename
      */
     public void showRenameDialog(
