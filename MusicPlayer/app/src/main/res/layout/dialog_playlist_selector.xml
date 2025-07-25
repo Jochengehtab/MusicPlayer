@@ -18,15 +18,31 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/playlist_list"
+    <!-- FrameLayout to hold the list and the progress bar -->
+    <FrameLayout
+        android:id="@+id/playlist_container"
         android:layout_width="0dp"
         android:layout_height="200dp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         app:layout_constraintTop_toBottomOf="@id/dialog_title"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/playlist_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" /> <!-- Start as GONE -->
+
+        <ProgressBar
+            android:id="@+id/playlist_progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="visible" /> <!-- Start as VISIBLE -->
+
+    </FrameLayout>
 
     <Button
         android:id="@+id/button_create_playlist"
@@ -37,7 +53,7 @@
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/button_cancel"
-        app:layout_constraintTop_toBottomOf="@id/playlist_list" />
+        app:layout_constraintTop_toBottomOf="@id/playlist_container" /> <!-- Constrain to container -->
 
     <Button
         android:id="@+id/button_cancel"

@@ -5,10 +5,13 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,6 +39,8 @@ import com.jochengehtab.musicplayer.Utility.PermissionUtility;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
@@ -150,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_playlist_selector, null);
         RecyclerView playlistRv = dialogView.findViewById(R.id.playlist_list);
+        ProgressBar progressBar = dialogView.findViewById(R.id.playlist_progress_bar); // Get progress bar
         Button newPlaylistButton = dialogView.findViewById(R.id.button_create_playlist);
         Button cancelButton = dialogView.findViewById(R.id.button_cancel);
 
@@ -157,54 +163,62 @@ public class MainActivity extends AppCompatActivity {
                 .setView(dialogView)
                 .create();
 
-        // Get folder list and add our special "All Tracks" playlist to the top
-        List<String> playlists = fileManager.listFolders();
-        playlists.add(0, ALL_TRACKS_PLAYLIST_NAME);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-        playlistRv.setLayoutManager(new LinearLayoutManager(this));
+        // Show the dialog immediately with the progress bar visible
+        dialog.show();
 
-        // Use the new PlaylistAdapter
-        PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistActionsListener() {
-            @Override
-            public void onPlayClicked(String playlistName) {
-                dialog.dismiss();
-                loadPlaylistAndPlay(playlistName);
-            }
+        executor.execute(() -> {
+            // This is the slow operation
+            List<String> playlists = fileManager.listPlaylists();
+            playlists.add(0, ALL_TRACKS_PLAYLIST_NAME);
 
-            @Override
-            public void onDeleteClicked(String playlistName) {
-                // Add a safety check to prevent deleting the "All Tracks" list
-                if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
-                    Toast.makeText(MainActivity.this, "Cannot delete 'All Tracks' list.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+            // Post the result back to the main thread
+            handler.post(() -> {
+                // Hide the progress bar and show the list
+                progressBar.setVisibility(View.GONE);
+                playlistRv.setVisibility(View.VISIBLE);
 
-                // Show a confirmation dialog before deleting
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Delete Playlist")
-                        .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
-                        .setPositiveButton("Delete", (d, which) -> {
-                            if (fileManager.deletePlaylist(playlistName)) {
-                                dialog.dismiss();
-                                // Refresh the dialog to show the updated list
-                                showPlaylistDialog();
-                            }
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            }
+                playlistRv.setLayoutManager(new LinearLayoutManager(this));
+
+                PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistActionsListener() {
+                    @Override
+                    public void onPlayClicked(String playlistName) {
+                        dialog.dismiss();
+                        loadPlaylistAndPlay(playlistName);
+                    }
+
+                    @Override
+                    public void onDeleteClicked(String playlistName) {
+                        if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
+                            Toast.makeText(MainActivity.this, "Cannot delete 'All Tracks' list.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Delete Playlist")
+                                .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
+                                .setPositiveButton("Delete", (d, which) -> {
+                                    if (fileManager.deletePlaylist(playlistName)) {
+                                        dialog.dismiss();
+                                        showPlaylistDialog(); // Refresh the dialog
+                                    }
+                                })
+                                .setNegativeButton("Cancel", null)
+                                .show();
+                    }
+                });
+                playlistRv.setAdapter(playlistAdapter);
+            });
         });
 
-        playlistRv.setAdapter(playlistAdapter);
-
+        // Set up button listeners outside the background task
         newPlaylistButton.setOnClickListener(v -> {
             dialog.dismiss();
             showCreatePlaylistDialog();
         });
 
         cancelButton.setOnClickListener(v -> dialog.dismiss());
-
-        dialog.show();
     }
 
     /**

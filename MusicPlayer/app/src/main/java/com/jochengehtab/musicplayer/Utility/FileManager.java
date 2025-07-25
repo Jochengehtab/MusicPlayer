@@ -57,10 +57,30 @@ public class FileManager {
         return result;
     }
 
+    public List<String> listPlaylists() {
+        List<String> playlists = new ArrayList<>();
+        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
+
+        if (rootDir != null && rootDir.isDirectory()) {
+            // This is the first slow I/O call
+            for (DocumentFile file : rootDir.listFiles()) {
+                if (file.isDirectory()) {
+                    // This is a second slow I/O call for each directory
+                    if (file.findFile(PLAYLIST_FILE_NAME) != null) {
+                        // Only add the folder if it contains our playlist file
+                        playlists.add(file.getName());
+                    }
+                }
+            }
+        }
+        return playlists;
+    }
+
     /**
-     * Lists all subdirectories within the main music directory.
+     * Lists ALL subdirectories within the main music directory, regardless of content.
+     * This is faster but less precise than listPlaylists().
      *
-     * @return A list of folder names.
+     * @return A list of all folder names.
      */
     public List<String> listFolders() {
         List<String> folders = new ArrayList<>();
