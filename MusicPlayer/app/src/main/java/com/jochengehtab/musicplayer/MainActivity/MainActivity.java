@@ -284,6 +284,8 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.updateList(playlistTracks);
 
+        bottomTitle.setText("No Track Selected");
+
         updatePlayButtonIcon();
         // Clear the last-clicked track since we are in a new context
         lastTrack = null;
