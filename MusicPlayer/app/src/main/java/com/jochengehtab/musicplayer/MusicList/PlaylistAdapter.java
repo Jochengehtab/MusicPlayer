@@ -38,8 +38,7 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistViewHolder> {
         String playlistName = playlists.get(position);
         holder.playlistNameText.setText(playlistName);
 
-        // Add a click listener to the entire item view to play the playlist
-        holder.itemView.setOnClickListener(v -> listener.onPlayClicked(playlistName));
+        holder.itemView.setOnClickListener(v -> listener.onSelectClicked(playlistName));
 
         holder.optionsButton.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, holder.optionsButton);

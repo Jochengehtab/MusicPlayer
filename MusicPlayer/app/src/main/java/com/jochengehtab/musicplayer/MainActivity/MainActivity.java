@@ -198,6 +198,11 @@ public class MainActivity extends AppCompatActivity {
                         dialog.dismiss();
                         loadPlaylistAndPlay(playlistName);
                     }
+                    @Override
+                    public void onSelectClicked(String playlistName) {
+                        dialog.dismiss();
+                        loadAndShowPlaylist(playlistName);
+                    }
 
                     @Override
                     public void onDeleteClicked(String playlistName) {
@@ -258,6 +263,38 @@ public class MainActivity extends AppCompatActivity {
                     showPlaylistDialog();
                 })
                 .show();
+    }
+
+    /**
+     * Loads a playlist's tracks and updates the main RecyclerView to display them,
+     * without starting playback. It also stops any currently playing music.
+     *
+     * @param playlistName The name of the playlist to load.
+     */
+    private void loadAndShowPlaylist(String playlistName) {
+        // Stop any ongoing playback before loading a new list.
+        musicPlayer.stopAndCancel();
+
+        List<Track> playlistTracks;
+        if (ALL_TRACKS_PLAYLIST_NAME.equals(playlistName)) {
+            playlistTracks = fileManager.loadMusicFiles();
+        } else {
+            playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
+        }
+
+        // Update the main RecyclerView to show the new list of tracks.
+        adapter.updateList(playlistTracks);
+
+        // Reset UI state
+        updatePlayButtonIcon(); // Should show the 'play' icon now
+        bottomTitle.setText(playlistName); // Show the playlist name in the bottom bar
+        lastTrack = null; // Clear the last-clicked track since we are in a new context
+
+        if (playlistTracks.isEmpty()) {
+            Toast.makeText(this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Loaded: " + playlistName, Toast.LENGTH_SHORT).show();
+        }
     }
 
 

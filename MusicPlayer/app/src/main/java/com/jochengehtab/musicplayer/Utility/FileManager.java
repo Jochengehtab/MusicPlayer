@@ -185,4 +185,28 @@ public class FileManager {
             Toast.makeText(context, "Error updating playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
+
+    /**
+     * Creates a new subfolder in the main music directory.
+     *
+     * @param name The name for the new folder.
+     * @return true if successful, false otherwise.
+     */
+    public boolean createFolder(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
+        if (rootDir != null && rootDir.isDirectory()) {
+            // Check if a folder with that name already exists
+            if (rootDir.findFile(name) != null) {
+                Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+            DocumentFile newDir = rootDir.createDirectory(name);
+            return newDir != null && newDir.exists();
+        }
+        return false;
+    }
+
 }
