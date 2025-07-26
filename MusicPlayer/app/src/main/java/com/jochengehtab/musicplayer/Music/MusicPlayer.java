@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -22,7 +20,6 @@ public class MusicPlayer {
     private boolean mixEnabled = false;
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public MusicPlayer(MusicUtility musicUtility, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.musicUtility = musicUtility;
@@ -36,22 +33,17 @@ public class MusicPlayer {
     }
 
     public synchronized void playMix(List<Track> musicFiles) {
-        // Submit the heavy work to the background thread
-        executor.execute(() -> {
-            cancelToken.set(false);
-            mixEnabled = true;
-            MainActivity.isMixPlaying = true;
+        cancelToken.set(false);
 
-            // Loop mixes by default
-            loopEnabled = true;
+        mixEnabled = true;
+        MainActivity.isMixPlaying = true;
+        loopEnabled = false;
 
-            playQueue = new ArrayList<>(musicFiles);
-            Collections.shuffle(playQueue, random);
-            currentIndex = 0;
+        playQueue = new ArrayList<>(musicFiles);
+        Collections.shuffle(playQueue, random);
+        currentIndex = 0;
 
-            // Start playing the first track
-            playNextInQueue();
-        });
+        playNextInQueue();
     }
 
     /**
@@ -63,24 +55,16 @@ public class MusicPlayer {
         if (musicFiles == null || musicFiles.isEmpty()) {
             return;
         }
+        cancelToken.set(false);
 
-        // Submit the heavy work to the background thread
-        executor.execute(() -> {
-            cancelToken.set(false);
+        mixEnabled = true; // Treat as a "mix" for playback control
+        MainActivity.isMixPlaying = true;
+        loopEnabled = false;
 
-            // Treat as a "mix" for playback control
-            mixEnabled = true;
-            MainActivity.isMixPlaying = true;
+        playQueue = new ArrayList<>(musicFiles); // No shuffle
+        currentIndex = 0;
 
-            // Loop playlists by default
-            loopEnabled = true;
-
-            playQueue = new ArrayList<>(musicFiles);
-            currentIndex = 0;
-
-            // Start playing the first track
-            playNextInQueue();
-        });
+        playNextInQueue();
     }
 
 
@@ -90,26 +74,14 @@ public class MusicPlayer {
             updateBottomPlayIcon.run();
             return;
         }
-
         if (currentIndex >= playQueue.size()) {
-            // If we've reached the end of the queue
-            if (!loopEnabled) {
-                // If looping is off, stop everything.
-                mixEnabled = false;
-                MainActivity.isMixPlaying = false;
-                updateBottomPlayIcon.run();
-                return;
-            }
-            // If looping is on, just reset to the beginning.
-            currentIndex = 0;
-        }
-
-        // Check again if the queue is empty after a potential loop reset
-        if (playQueue.isEmpty()) {
             mixEnabled = false;
             MainActivity.isMixPlaying = false;
             updateBottomPlayIcon.run();
-            return;
+            if (!loopEnabled) {
+                return;
+            }
+            currentIndex = 0;
         }
 
         Track nextTrack = playQueue.get(currentIndex);
@@ -117,14 +89,11 @@ public class MusicPlayer {
         musicUtility.play(nextTrack.uri(), new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
-                // The icon should be updated as soon as playback starts
-                updateBottomPlayIcon.run();
             }
 
             @Override
             public void onPlaybackStopped() {
-                // We lock to prevent race conditions when a song ends and the user
-                // simultaneously clicks something else.
+                // We lock MusicPlayer.this to prevent race condition
                 synchronized (MusicPlayer.this) {
                     if (cancelToken.get()) {
                         return;
@@ -135,7 +104,6 @@ public class MusicPlayer {
             }
         });
     }
-
 
     public boolean isLooping() {
         return loopEnabled;
@@ -163,10 +131,5 @@ public class MusicPlayer {
         musicUtility.stopAndRelease();
         mixEnabled = false;
         MainActivity.isMixPlaying = false;
-    }
-
-    public void shutdown() {
-        executor.shutdownNow(); // Stop any pending tasks
-        stopAndCancel();
     }
 }

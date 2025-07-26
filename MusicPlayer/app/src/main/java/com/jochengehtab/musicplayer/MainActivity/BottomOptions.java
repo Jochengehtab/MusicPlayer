@@ -1,11 +1,9 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.content.Context;
-import android.view.MenuItem; // Import MenuItem
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.widget.Toast; // Import Toast
 
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
@@ -15,8 +13,9 @@ import com.jochengehtab.musicplayer.Utility.FileManager;
 
 public class BottomOptions {
     private final Context context;
-    private final MusicUtility musicUtility;
+
     private final MusicPlayer musicPlayer;
+    private final MusicUtility musicUtility;
     private final FileManager fileManager;
 
     public BottomOptions(Context context, MusicUtility musicUtility, MusicPlayer musicPlayer, FileManager fileManager) {
@@ -26,37 +25,56 @@ public class BottomOptions {
         this.fileManager = fileManager;
     }
 
-    public void handleBottomOptions(ImageButton bottomOptionsButton, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
-        bottomOptionsButton.setOnClickListener(v -> {
-            PopupMenu popup = new PopupMenu(context, bottomOptionsButton);
+    public void handleBottomOptions(ImageButton bottomOptions, OnPlaybackStateListener playbackListener, ImageButton bottomPlay, TextView bottomTitle) {
+        bottomOptions.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(context, bottomOptions);
             popup.inflate(R.menu.bottom_bar_menu);
 
-            // --- KEY CHANGE: Update the menu UI before showing it ---
-            MenuItem loopItem = popup.getMenu().findItem(R.id.action_loop);
-            if (musicPlayer.isLooping()) {
-                loopItem.setTitle(R.string.disable_loop);
-            } else {
-                loopItem.setTitle(R.string.enable_loop);
-            }
-            // --- END OF KEY CHANGE ---
+            // 1) Tell the group to be single‐choice
+            popup.getMenu().setGroupCheckable(
+                    R.id.group_playback_modes,
+                    true,
+                    true
+            );
 
+            // 2) Pre‐check the currently active mode, if any
+            int checkedId = musicPlayer.isLooping()
+                    ? R.id.action_loop
+                    : musicPlayer.isMixing()
+                    ? R.id.action_mix
+                    : -1;
+
+            if (checkedId != -1) {
+                popup.getMenu().findItem(checkedId).setChecked(true);
+            }
+
+            // 3) Handle selections
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_loop) {
-                    boolean isNowLooping = musicPlayer.toggleLoop();
-                    // Provide feedback to the user
-                    Toast.makeText(
-                            context,
-                            isNowLooping ? "Looping enabled" : "Looping disabled",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    boolean looping = musicPlayer.toggleLoop();
+                    // uncheck the other
+                    popup.getMenu().findItem(R.id.action_mix).setChecked(false);
+                    item.setChecked(looping);
+                    if (musicUtility.isInitialized()) {
+                        musicUtility.loopMediaPlayer(playbackListener);
+                    }
                     return true;
+
                 } else if (id == R.id.action_mix) {
-                    // ... your existing mix logic ...
+                    if (fileManager != null) {
+                        MainActivity.isMixPlaying = true;
+                        musicPlayer.playMix(fileManager.loadMusicFiles());
+                        bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
+                        bottomTitle.setText(musicPlayer.getCurrentTitle().title());
+                    }
+                    popup.getMenu().findItem(R.id.action_loop).setChecked(false);
+                    item.setChecked(true);
                     return true;
                 }
                 return false;
             });
+
             popup.show();
         });
     }

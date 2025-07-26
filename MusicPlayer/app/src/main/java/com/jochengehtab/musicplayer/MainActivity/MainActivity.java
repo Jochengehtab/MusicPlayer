@@ -254,7 +254,19 @@ public class MainActivity extends AppCompatActivity {
      * Handles clicks on the main play/pause button.
      */
     private void handlePlayPauseClick() {
-        // If a song is currently playing (part of a playlist or single), pause it.
+        // If a mix or playlist is playing, the main button's job is to cancel it.
+        if (isMixPlaying) {
+            musicPlayer.stopAndCancel();
+            updatePlayButtonIcon();
+            return;
+        }
+
+        // If no track has ever been selected, do nothing.
+        if (lastTrack == null) {
+            return;
+        }
+
+        // If a song is currently playing, pause it.
         if (musicUtility.isPlaying()) {
             musicUtility.pause();
         }
@@ -263,12 +275,9 @@ public class MainActivity extends AppCompatActivity {
             musicUtility.resume();
         }
         // If there's no song loaded in the player, play the last selected one.
-        // This action implicitly cancels any active playlist.
-        else if (lastTrack != null) {
-            musicPlayer.stopAndCancel(); // Ensure any old playlist context is cleared
+        else {
             musicUtility.play(lastTrack.uri(), playbackListener);
         }
-        // If nothing is loaded and no track was ever selected, do nothing.
 
         // After any action, update the icon to reflect the new state.
         updatePlayButtonIcon();
@@ -279,8 +288,8 @@ public class MainActivity extends AppCompatActivity {
      * It shows a stop icon if a playlist is active OR a single track is playing.
      */
     public void updatePlayButtonIcon() {
-        if (musicUtility.isPlaying()) {
-            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp); // Or a pause icon if you prefer
+        if (isMixPlaying || musicUtility.isPlaying()) {
+            bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
         } else {
             bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
         }
@@ -354,6 +363,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        musicPlayer.shutdown();
+        musicPlayer.stopAndCancel();
     }
 }
