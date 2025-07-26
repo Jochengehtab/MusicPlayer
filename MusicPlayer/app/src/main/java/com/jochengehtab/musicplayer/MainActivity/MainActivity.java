@@ -198,6 +198,7 @@ public class MainActivity extends AppCompatActivity {
                         dialog.dismiss();
                         loadPlaylistAndPlay(playlistName);
                     }
+
                     @Override
                     public void onSelectClicked(String playlistName) {
                         dialog.dismiss();
@@ -350,6 +351,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Loads tracks, updates the main RecyclerView, and starts playback for a playlist.
      * This handles the special "All Tracks" case and reloads the UI as requested.
+     *
      * @param playlistName The name of the playlist to load and play.
      */
     private void loadPlaylistAndPlay(String playlistName) {

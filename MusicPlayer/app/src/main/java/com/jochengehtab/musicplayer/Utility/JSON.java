@@ -114,7 +114,7 @@ public class JSON {
                     .openFileDescriptor(configFile.getUri(), "wt")) {
                 assert pfd != null;
                 try (Writer writer = new OutputStreamWriter(
-                             new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
+                        new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
                     gson.toJson(root, writer);
                 }
             }
@@ -188,7 +188,7 @@ public class JSON {
                         .openFileDescriptor(configFile.getUri(), "wt")) {
                     assert pfd != null;
                     try (Writer writer = new OutputStreamWriter(
-                                 new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
+                            new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
                         gson.toJson(root, writer);
                     }
                 }
@@ -200,6 +200,7 @@ public class JSON {
 
     /**
      * Gets all top-level keys from the JSON file.
+     *
      * @return A Set of all keys.
      */
     public Set<String> getKeys() {

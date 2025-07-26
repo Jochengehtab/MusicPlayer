@@ -75,6 +75,7 @@ public class FileManager {
     /**
      * Reads the list of playlist names from the central playlists.json config file.
      * This is very fast as it doesn't scan the file system.
+     *
      * @return A list of playlist names.
      */
     public List<String> listPlaylists() {
