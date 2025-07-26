@@ -273,7 +273,6 @@ public class MainActivity extends AppCompatActivity {
      * @param playlistName The name of the playlist to load.
      */
     private void loadAndShowPlaylist(String playlistName) {
-        // Stop any ongoing playback before loading a new list.
         musicPlayer.stopAndCancel();
 
         List<Track> playlistTracks;
@@ -283,21 +282,12 @@ public class MainActivity extends AppCompatActivity {
             playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
         }
 
-        // Update the main RecyclerView to show the new list of tracks.
         adapter.updateList(playlistTracks);
 
-        // Reset UI state
-        updatePlayButtonIcon(); // Should show the 'play' icon now
-        bottomTitle.setText(playlistName); // Show the playlist name in the bottom bar
-        lastTrack = null; // Clear the last-clicked track since we are in a new context
-
-        if (playlistTracks.isEmpty()) {
-            Toast.makeText(this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Loaded: " + playlistName, Toast.LENGTH_SHORT).show();
-        }
+        updatePlayButtonIcon();
+        // Clear the last-clicked track since we are in a new context
+        lastTrack = null;
     }
-
 
     /**
      * Handles clicks on the main play/pause button.
