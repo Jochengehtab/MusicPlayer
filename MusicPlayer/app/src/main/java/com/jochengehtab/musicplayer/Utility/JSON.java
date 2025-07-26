@@ -2,6 +2,7 @@ package com.jochengehtab.musicplayer.Utility;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 
 import androidx.documentfile.provider.DocumentFile;
 
@@ -10,6 +11,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -108,10 +110,13 @@ public class JSON {
             JsonElement element = gson.toJsonTree(value);
             root.put(key, element);
 
-            // Write the entire updated map back to the file
-            try (Writer writer = new OutputStreamWriter(
-                    context.getContentResolver().openOutputStream(configFile.getUri(), "w"), StandardCharsets.UTF_8)) {
-                gson.toJson(root, writer);
+            try (ParcelFileDescriptor pfd = context.getContentResolver()
+                    .openFileDescriptor(configFile.getUri(), "wt")) {
+                assert pfd != null;
+                try (Writer writer = new OutputStreamWriter(
+                             new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
+                    gson.toJson(root, writer);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write to config file: " + configFile.getName(), e);
@@ -178,10 +183,14 @@ public class JSON {
             Map<String, JsonElement> root = readAsMap();
             if (root.containsKey(key)) {
                 root.remove(key);
-                // Write the entire updated map back to the file
-                try (Writer writer = new OutputStreamWriter(
-                        context.getContentResolver().openOutputStream(configFile.getUri(), "w"), StandardCharsets.UTF_8)) {
-                    gson.toJson(root, writer);
+
+                try (ParcelFileDescriptor pfd = context.getContentResolver()
+                        .openFileDescriptor(configFile.getUri(), "wt")) {
+                    assert pfd != null;
+                    try (Writer writer = new OutputStreamWriter(
+                                 new FileOutputStream(pfd.getFileDescriptor()), StandardCharsets.UTF_8)) {
+                        gson.toJson(root, writer);
+                    }
                 }
             }
         } catch (IOException e) {
