@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A simplified and robust JSON manager using a consistent read-modify-write pattern.
@@ -166,6 +167,37 @@ public class JSON {
             return gson.fromJson(element, arrayClass);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read array from config file: " + configFile.getName(), e);
+        }
+    }
+
+    /**
+     * Removes a key-value pair from the JSON file.
+     */
+    public void remove(String key) {
+        try {
+            Map<String, JsonElement> root = readAsMap();
+            if (root.containsKey(key)) {
+                root.remove(key);
+                // Write the entire updated map back to the file
+                try (Writer writer = new OutputStreamWriter(
+                        context.getContentResolver().openOutputStream(configFile.getUri(), "w"), StandardCharsets.UTF_8)) {
+                    gson.toJson(root, writer);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to remove key from config file: " + configFile.getName(), e);
+        }
+    }
+
+    /**
+     * Gets all top-level keys from the JSON file.
+     * @return A Set of all keys.
+     */
+    public Set<String> getKeys() {
+        try {
+            return readAsMap().keySet();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read keys from config file: " + configFile.getName(), e);
         }
     }
 }

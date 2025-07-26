@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -119,9 +120,18 @@ public class MainActivity extends AppCompatActivity {
         if (musicDirectoryUri != null) {
             if (PermissionUtility.hasPersistedPermissions(musicDirectoryUri, getContentResolver())) {
                 // Permissions are still valid, proceed as normal
-                timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-                fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
-                loadAndShowTracks();
+                try {
+                    timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+                    fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
+                    loadAndShowTracks();
+                } catch (Exception e) {
+                    Log.e("MainActivity", "Failed to initialize FileManager or JSON config", e);
+                    Toast.makeText(this, "Error initializing storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    // Clear the invalid URI so we don't keep trying
+                    musicDirectoryUri = null;
+                    fileManager = null;
+                    prefs.edit().remove(KEY_TREE_URI).apply();
+                }
             } else {
                 // Permissions were lost or are invalid
                 Toast.makeText(this, "Permission for folder was lost. Please choose it again.", Toast.LENGTH_LONG).show();
@@ -155,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_playlist_selector, null);
         RecyclerView playlistRv = dialogView.findViewById(R.id.playlist_list);
-        ProgressBar progressBar = dialogView.findViewById(R.id.playlist_progress_bar); // Get progress bar
+        ProgressBar progressBar = dialogView.findViewById(R.id.playlist_progress_bar);
         Button newPlaylistButton = dialogView.findViewById(R.id.button_create_playlist);
         Button cancelButton = dialogView.findViewById(R.id.button_cancel);
 
@@ -232,13 +242,13 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Create", (d, which) -> {
                     String name = input.getText().toString().trim();
                     if (!name.isEmpty()) {
-                        if (fileManager.createFolder(name)) {
+                        // Use the renamed method
+                        if (fileManager.createPlaylist(name)) {
                             Toast.makeText(this, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
                             // Reopen the playlist selector to show the new playlist
                             showPlaylistDialog();
-                        } else {
-                            Toast.makeText(this, "Failed to create playlist.", Toast.LENGTH_SHORT).show();
                         }
+                        // No "else" here, as createPlaylist now shows its own error toasts
                     } else {
                         Toast.makeText(this, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
                     }
@@ -249,6 +259,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
 
     /**
      * Handles clicks on the main play/pause button.
@@ -349,10 +360,19 @@ public class MainActivity extends AppCompatActivity {
                         prefs.edit().putString(KEY_TREE_URI, uri.toString()).apply();
                         musicDirectoryUri = uri;
 
-                        timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-                        fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
-                        adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
-                        loadAndShowTracks();
+                        try {
+                            timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
+                            fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
+                            adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
+                            loadAndShowTracks();
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Failed to initialize on folder pick", e);
+                            Toast.makeText(this, "Error setting up storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            // Reset state
+                            musicDirectoryUri = null;
+                            fileManager = null;
+                            prefs.edit().remove(KEY_TREE_URI).apply();
+                        }
                     } else {
                         Toast.makeText(this, "No folder selected.", Toast.LENGTH_SHORT).show();
                     }

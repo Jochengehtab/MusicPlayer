@@ -102,13 +102,13 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             return;
         }
 
-        List<String> playlists = fileManager.listFolders();
+        // Use the new, fast method to get playlist names
+        List<String> playlists = fileManager.listPlaylists();
 
         if (playlists.isEmpty()) {
             Toast.makeText(context, "No playlists created yet.", Toast.LENGTH_SHORT).show();
             return;
         }
-
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 context,

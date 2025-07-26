@@ -15,16 +15,33 @@ import java.util.List;
 import java.util.Objects;
 
 public class FileManager {
-    private static final String PLAYLIST_FILE_NAME = "playlist.json";
-    private static final String TRACKS_KEY = "tracks";
+    private static final String PLAYLISTS_CONFIG_FILE_NAME = "playlists.json";
+    private static final String TRACKS_KEY = "tracks"; // Still used for adding tracks
     private final Uri musicDirectoryUri;
     private final Context context;
     private final MusicUtility musicUtility;
+    private final JSON playlistsConfig;
+
 
     public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
         this.musicDirectoryUri = musicDirectoryUri;
         this.context = context;
         this.musicUtility = musicUtility;
+
+        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
+        if (rootDir == null) {
+            throw new IllegalStateException("Cannot access the music directory. Please select it again.");
+        }
+
+        // Find or create the central playlists.json file
+        DocumentFile playlistsFile = rootDir.findFile(PLAYLISTS_CONFIG_FILE_NAME);
+        if (playlistsFile == null) {
+            playlistsFile = rootDir.createFile("application/json", PLAYLISTS_CONFIG_FILE_NAME);
+            if (playlistsFile == null) {
+                throw new RuntimeException("Unable to create central playlist file: " + PLAYLISTS_CONFIG_FILE_NAME);
+            }
+        }
+        this.playlistsConfig = new JSON(context, playlistsFile);
     }
 
     public static String getUriHash(Uri uri) {
@@ -57,163 +74,97 @@ public class FileManager {
         return result;
     }
 
-    public List<String> listPlaylists() {
-        List<String> playlists = new ArrayList<>();
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-
-        if (rootDir != null && rootDir.isDirectory()) {
-            // This is the first slow I/O call
-            for (DocumentFile file : rootDir.listFiles()) {
-                if (file.isDirectory()) {
-                    // This is a second slow I/O call for each directory
-                    if (file.findFile(PLAYLIST_FILE_NAME) != null) {
-                        // Only add the folder if it contains our playlist file
-                        playlists.add(file.getName());
-                    }
-                }
-            }
-        }
-        return playlists;
-    }
-
     /**
-     * Lists ALL subdirectories within the main music directory, regardless of content.
-     * This is faster but less precise than listPlaylists().
-     *
-     * @return A list of all folder names.
+     * Reads the list of playlist names from the central playlists.json config file.
+     * This is very fast as it doesn't scan the file system.
+     * @return A list of playlist names.
      */
-    public List<String> listFolders() {
-        List<String> folders = new ArrayList<>();
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir != null && rootDir.isDirectory()) {
-            for (DocumentFile file : rootDir.listFiles()) {
-                if (file.isDirectory()) {
-                    folders.add(file.getName());
-                }
-            }
+    public List<String> listPlaylists() {
+        try {
+            // getKeys returns a Set, so we convert it to a List
+            return new ArrayList<>(playlistsConfig.getKeys());
+        } catch (RuntimeException e) {
+            Log.e("FileManager", "Error listing playlists", e);
+            Toast.makeText(context, "Could not load playlists.", Toast.LENGTH_SHORT).show();
+            return new ArrayList<>();
         }
-        return folders;
     }
 
     /**
-     * Creates a new subfolder in the main music directory.
+     * Creates a new playlist by adding an entry to the central playlists.json config file.
      *
-     * @param name The name for the new folder.
+     * @param name The name for the new playlist.
      * @return true if successful, false otherwise.
      */
-    public boolean createFolder(String name) {
+    public boolean createPlaylist(String name) {
         if (name == null || name.trim().isEmpty()) {
+            Toast.makeText(context, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
             return false;
         }
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir != null && rootDir.isDirectory()) {
-            // Check if a folder with that name already exists
-            if (rootDir.findFile(name) != null) {
+        try {
+            List<String> existingPlaylists = listPlaylists();
+            if (existingPlaylists.stream().anyMatch(p -> p.equalsIgnoreCase(name))) {
                 Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show();
                 return false;
             }
-            DocumentFile newDir = rootDir.createDirectory(name);
-            return newDir != null && newDir.exists();
+            // Create a new entry with an empty list of tracks
+            playlistsConfig.write(name, new ArrayList<Track>());
+            return true;
+        } catch (RuntimeException e) {
+            Log.e("FileManager", "Error creating playlist", e);
+            Toast.makeText(context, "Failed to create playlist.", Toast.LENGTH_SHORT).show();
+            return false;
         }
-        return false;
     }
 
     /**
-     * Reads the playlist.json file from a given playlist folder.
+     * Reads the track list for a given playlist from the central playlists.json file.
      *
-     * @param playlistName The name of the folder representing the playlist.
+     * @param playlistName The name of the playlist.
      * @return A list of tracks from the playlist, or an empty list if not found or empty.
      */
     public List<Track> loadTracksFromPlaylist(String playlistName) {
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir == null) return new ArrayList<>();
-
-        DocumentFile playlistDir = rootDir.findFile(playlistName);
-        if (playlistDir == null || !playlistDir.isDirectory()) {
-            Toast.makeText(context, "Playlist '" + playlistName + "' not found.", Toast.LENGTH_SHORT).show();
-            return new ArrayList<>();
-        }
-
-        DocumentFile playlistFile = playlistDir.findFile(PLAYLIST_FILE_NAME);
-        if (playlistFile == null) {
-            return new ArrayList<>(); // Playlist folder exists but has no songs yet.
-        }
-
         try {
-            JSON playlistJson = new JSON(context, playlistFile);
-            List<Track> playlistTracks = playlistJson.readList(TRACKS_KEY, Track.class);
+            List<Track> playlistTracks = playlistsConfig.readList(playlistName, Track.class);
             return Objects.requireNonNullElseGet(playlistTracks, ArrayList::new);
         } catch (RuntimeException e) {
             Toast.makeText(context, "Error reading playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            Log.i("e", "Error reading playlist: " + e.getMessage());
+            Log.e("FileManager", "Error reading playlist", e);
             return new ArrayList<>();
         }
     }
 
     /**
-     * Deletes a playlist folder and all its contents.
+     * Deletes a playlist entry from the central playlists.json file.
      *
      * @param playlistName The name of the playlist to delete.
      * @return true if successful, false otherwise.
      */
     public boolean deletePlaylist(String playlistName) {
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir == null) return false;
-
-        DocumentFile playlistDir = rootDir.findFile(playlistName);
-        if (playlistDir != null && playlistDir.isDirectory()) {
-            // DocumentFile.delete() for a directory should delete its contents as well.
-            if (playlistDir.delete()) {
-                Toast.makeText(context, "Playlist '" + playlistName + "' deleted.", Toast.LENGTH_SHORT).show();
-                return true;
-            } else {
-                Toast.makeText(context, "Failed to delete playlist.", Toast.LENGTH_SHORT).show();
-                return false;
-            }
-        } else {
-            Toast.makeText(context, "Playlist not found.", Toast.LENGTH_SHORT).show();
+        try {
+            playlistsConfig.remove(playlistName);
+            Toast.makeText(context, "Playlist '" + playlistName + "' deleted.", Toast.LENGTH_SHORT).show();
+            return true;
+        } catch (RuntimeException e) {
+            Log.e("FileManager", "Error deleting playlist", e);
+            Toast.makeText(context, "Failed to delete playlist.", Toast.LENGTH_SHORT).show();
             return false;
         }
     }
 
     /**
-     * Adds a track to a specified playlist's JSON file using the JSON utility.
+     * Adds a track to a specified playlist's entry in the central JSON file.
      *
-     * @param playlistName The name of the folder representing the playlist.
+     * @param playlistName The name of the playlist.
      * @param track        The track to add.
      */
     public void addTrackToPlaylist(String playlistName, Track track) {
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir == null) return;
-
-        // 1. Find the playlist directory
-        DocumentFile playlistDir = rootDir.findFile(playlistName);
-        if (playlistDir == null || !playlistDir.isDirectory()) {
-            Toast.makeText(context, "Playlist folder not found!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 2. Find or create the playlist.json file
-        DocumentFile playlistFile = playlistDir.findFile(PLAYLIST_FILE_NAME);
-        if (playlistFile == null) {
-            playlistFile = playlistDir.createFile("application/json", PLAYLIST_FILE_NAME);
-            if (playlistFile == null) {
-                Toast.makeText(context, "Failed to create playlist file!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
-
-        Log.i("Name", track.title());
-        Log.i("URI", String.valueOf(track.uri()));
-
-        // 3. Use the JSON utility to read, update, and write
         try {
-            JSON playlistJson = new JSON(context, playlistFile);
-
-            // Read the existing list of tracks
-            List<Track> playlistTracks = playlistJson.readList(TRACKS_KEY, Track.class);
+            // Read the existing list of tracks for the given playlist
+            List<Track> playlistTracks = playlistsConfig.readList(playlistName, Track.class);
             if (playlistTracks == null) {
-                playlistTracks = new ArrayList<>(); // If key doesn't exist, start a new list
+                // This case shouldn't happen if playlists are created properly, but as a safeguard...
+                playlistTracks = new ArrayList<>();
             }
 
             // Check if track is already in the playlist
@@ -223,9 +174,9 @@ public class FileManager {
                 return;
             }
 
-            // Add the new track and write the entire list back
+            // Add the new track and write the updated list back under the same key
             playlistTracks.add(track);
-            playlistJson.write(TRACKS_KEY, playlistTracks);
+            playlistsConfig.write(playlistName, playlistTracks);
 
             Toast.makeText(context, "Added '" + track.title() + "' to " + playlistName, Toast.LENGTH_SHORT).show();
 
