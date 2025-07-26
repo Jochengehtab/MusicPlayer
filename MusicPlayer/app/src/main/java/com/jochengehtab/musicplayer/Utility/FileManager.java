@@ -16,12 +16,10 @@ import java.util.Objects;
 
 public class FileManager {
     private static final String PLAYLISTS_CONFIG_FILE_NAME = "playlists.json";
-    private static final String TRACKS_KEY = "tracks"; // Still used for adding tracks
     private final Uri musicDirectoryUri;
     private final Context context;
     private final MusicUtility musicUtility;
     private final JSON playlistsConfig;
-
 
     public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
         this.musicDirectoryUri = musicDirectoryUri;

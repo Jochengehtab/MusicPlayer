@@ -47,16 +47,33 @@ public class Trim {
         Integer[] timestamps = timestampsConfig.readArray(
                 FileManager.getUriHash(track.uri()), Integer[].class
         );
-        // timestamps[0] = saved start, [1] = saved end, [2] = full duration (sec)
-        final int durationSec = Math.max(1, timestamps[2]);
+
+        final int durationSec;
+        final int savedStart;
+        final int savedEnd;
+        if (timestamps == null) {
+            final int duration = musicUtility.getTrackDuration(track.uri());
+            timestampsConfig.write(
+                    FileManager.getUriHash(track.uri()),
+                    new int[]{0, duration, duration}
+            );
+            durationSec = duration;
+            savedEnd = duration;
+            savedStart = 0;
+        } else {
+            durationSec = timestamps[2];
+            savedEnd = timestamps[1];
+            savedStart = timestamps[0];
+        }
+
 
         // Configure sliders to represent seconds directly
         seekStart.setMax(durationSec);
         seekEnd.setMax(durationSec);
-        seekStart.setProgress(timestamps[0]);
-        seekEnd.setProgress(timestamps[1]);
-        valueStart.setText(String.valueOf(timestamps[0]));
-        valueEnd.setText(String.valueOf(timestamps[1]));
+        seekStart.setProgress(savedStart);
+        seekEnd.setProgress(savedEnd);
+        valueStart.setText(String.valueOf(savedStart));
+        valueEnd.setText(String.valueOf(savedEnd));
 
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
