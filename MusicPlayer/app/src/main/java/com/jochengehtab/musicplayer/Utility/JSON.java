@@ -24,10 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * A simplified and robust JSON manager using a consistent read-modify-write pattern.
- * This ensures that custom TypeAdapters (like for Uri) are always used correctly.
- */
 public class JSON {
     private final Gson gson;
     private final Context context;
@@ -61,7 +57,7 @@ public class JSON {
         // Initialize Gson with our custom adapter
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(Uri.class, new UriTypeAdapter())
-                .setPrettyPrinting() // Makes the JSON file human-readable
+                .setPrettyPrinting()
                 .create();
     }
 
@@ -75,7 +71,7 @@ public class JSON {
         // Initialize Gson with our custom adapter
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(Uri.class, new UriTypeAdapter())
-                .setPrettyPrinting() // Makes the JSON file human-readable
+                .setPrettyPrinting()
                 .create();
     }
 
@@ -85,7 +81,6 @@ public class JSON {
      * @return A map representing the JSON content. Returns an empty map if the file is empty or new.
      */
     private Map<String, JsonElement> readAsMap() throws IOException {
-        // If file is empty or doesn't exist, return a new map
         if (configFile.length() == 0) {
             return new LinkedHashMap<>();
         }
@@ -106,6 +101,7 @@ public class JSON {
     public void write(String key, Object value) {
         try {
             Map<String, JsonElement> root = readAsMap();
+
             // Convert the new value to a JsonElement using our custom Gson instance
             JsonElement element = gson.toJsonTree(value);
             root.put(key, element);
@@ -120,23 +116,6 @@ public class JSON {
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write to config file: " + configFile.getName(), e);
-        }
-    }
-
-    /**
-     * Reads a value from the JSON file.
-     */
-    public <T> T read(String key, Class<T> clazz) {
-        try {
-            Map<String, JsonElement> root = readAsMap();
-            JsonElement element = root.get(key);
-            if (element == null || element.isJsonNull()) {
-                return null;
-            }
-            // Use our custom Gson instance to deserialize the element
-            return gson.fromJson(element, clazz);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read from config file: " + configFile.getName(), e);
         }
     }
 
