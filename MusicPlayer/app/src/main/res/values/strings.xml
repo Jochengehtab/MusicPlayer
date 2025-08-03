@@ -22,6 +22,7 @@
     <string name="select_playlist">Select Playlist</string>
     <string name="cancel">Cancel</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="search">Search</string>
     <string-array name="playback_options">
         <item>Loop</item>
         <item>Mix</item>

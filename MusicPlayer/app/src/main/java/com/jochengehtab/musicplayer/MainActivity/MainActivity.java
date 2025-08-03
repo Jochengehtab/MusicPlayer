@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private Track lastTrack;
     private TextView bottomTitle;
     private ImageButton bottomPlay;
+    private ImageButton searchIcon;
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
 
@@ -85,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton chooseButton = findViewById(R.id.choose);
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
+
+        searchIcon = findViewById(R.id.search_icon);
         SearchView searchView = findViewById(R.id.track_search_view);
 
         // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
@@ -159,6 +162,18 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton burgerMenu = findViewById(R.id.burger_menu);
         burgerMenu.setOnClickListener(v -> showPlaylistDialog());
+
+        searchIcon.setOnClickListener(v -> {
+            if (searchView.getVisibility() == View.GONE) {
+                // If search view is hidden, show it
+                searchView.setVisibility(View.VISIBLE);
+                searchView.requestFocus(); // Immediately focus on the search view
+            } else {
+                // If search view is visible, hide it and clear the query
+                searchView.setQuery("", false);
+                searchView.setVisibility(View.GONE);
+            }
+        });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
