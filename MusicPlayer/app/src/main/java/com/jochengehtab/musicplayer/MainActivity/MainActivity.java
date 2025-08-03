@@ -21,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
@@ -62,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private OnPlaybackStateListener playbackListener;
+    private List<Track> allTracks = new ArrayList<>();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -82,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton chooseButton = findViewById(R.id.choose);
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
+        SearchView searchView = findViewById(R.id.track_search_view);
 
         // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
         playbackListener = new OnPlaybackStateListener() {
@@ -155,6 +159,26 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton burgerMenu = findViewById(R.id.burger_menu);
         burgerMenu.setOnClickListener(v -> showPlaylistDialog());
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterTracks(newText);
+                return true;
+            }
+        });
+    }
+
+    private void filterTracks(String query) {
+        List<Track> filteredTracks = allTracks.stream()
+                .filter(track -> track.title().toLowerCase().contains(query.toLowerCase()))
+                .collect(Collectors.toList());
+        adapter.updateList(filteredTracks);
     }
 
     private void showPlaylistDialog() {
@@ -282,7 +306,8 @@ public class MainActivity extends AppCompatActivity {
             playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
         }
 
-        adapter.updateList(playlistTracks);
+        allTracks = new ArrayList<>(playlistTracks);
+        adapter.updateList(allTracks);
 
         bottomTitle.setText("No Track Selected");
 
@@ -357,8 +382,8 @@ public class MainActivity extends AppCompatActivity {
             playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
         }
 
-        // KEY CHANGE: Reload the main music list in the UI to show the selected playlist's tracks.
-        adapter.updateList(playlistTracks);
+        allTracks = new ArrayList<>(playlistTracks);
+        adapter.updateList(allTracks);
 
         // Now, start playing the loaded list.
         if (!playlistTracks.isEmpty()) {
@@ -371,8 +396,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadAndShowTracks() {
-        List<Track> tracks = fileManager.loadMusicFiles();
-        adapter.updateList(tracks);
+        allTracks = fileManager.loadMusicFiles();
+        adapter.updateList(allTracks);
     }
 
     private void restorePreferences() {
