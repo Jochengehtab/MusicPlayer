@@ -9,6 +9,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private ImageButton searchIcon;
+    private SearchView searchView;
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
 
@@ -88,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         bottomTitle = findViewById(R.id.bottom_title);
 
         searchIcon = findViewById(R.id.search_icon);
-        SearchView searchView = findViewById(R.id.track_search_view);
+        searchView = findViewById(R.id.track_search_view);
 
         // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
         playbackListener = new OnPlaybackStateListener() {
@@ -160,19 +163,46 @@ public class MainActivity extends AppCompatActivity {
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
 
+        // Load the animations
+        final Animation slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in);
+        final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
+
+        // Set a listener on the slide-up animation to hide the view AFTER it finishes
+        slideUp.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                searchView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+            }
+        });
+
         ImageButton burgerMenu = findViewById(R.id.burger_menu);
         burgerMenu.setOnClickListener(v -> showPlaylistDialog());
 
         searchIcon.setOnClickListener(v -> {
             if (searchView.getVisibility() == View.GONE) {
-                // If search view is hidden, show it
+                // Show the search view with animation
                 searchView.setVisibility(View.VISIBLE);
-                searchView.requestFocus(); // Immediately focus on the search view
+                searchView.startAnimation(slideDown);
+                searchView.requestFocus();
             } else {
-                // If search view is visible, hide it and clear the query
+                // Hide the search view with animation
                 searchView.setQuery("", false);
-                searchView.setVisibility(View.GONE);
+                searchView.startAnimation(slideUp);
             }
+        });
+
+        searchView.setOnCloseListener(() -> {
+            searchView.setQuery("", false);
+            searchView.startAnimation(slideUp);
+            return true; // Return true to indicate we've handled the event
         });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
