@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private SearchView searchView;
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
+    private BottomOptions bottomOptions;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -155,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.setFileManager(fileManager);
 
-        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
+        bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
@@ -272,6 +273,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onSelectClicked(String playlistName) {
                         dialog.dismiss();
                         loadAndShowPlaylist(playlistName);
+                        bottomOptions.setPlaylistName(playlistName);
                     }
 
                     @Override

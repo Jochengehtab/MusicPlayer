@@ -72,6 +72,12 @@ public class FileManager {
         return result;
     }
 
+    public List<Track> loadPlaylistMusicFiles(String playlistName) {
+        List<Track> result;
+        result = playlistsConfig.readList(playlistName, Track.class);
+        return result;
+    }
+
     /**
      * Reads the list of playlist names from the central playlists.json config file.
      * This is very fast as it doesn't scan the file system.

@@ -8,8 +8,11 @@ import android.widget.TextView;
 import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
+import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
+
+import java.util.List;
 
 public class BottomOptions {
     private final Context context;
@@ -17,6 +20,7 @@ public class BottomOptions {
     private final MusicPlayer musicPlayer;
     private final MusicUtility musicUtility;
     private final FileManager fileManager;
+    private String playListName;
 
     public BottomOptions(Context context, MusicUtility musicUtility, MusicPlayer musicPlayer, FileManager fileManager) {
         this.context = context;
@@ -64,9 +68,14 @@ public class BottomOptions {
                 } else if (id == R.id.action_mix) {
                     if (fileManager != null) {
                         MainActivity.isMixPlaying = true;
-                        musicPlayer.playMix(fileManager.loadMusicFiles());
+                        List<Track> updatedPlaylist = fileManager.loadPlaylistMusicFiles(playListName);
+                        musicPlayer.playMix(updatedPlaylist);
+
                         bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                        bottomTitle.setText(musicPlayer.getCurrentTitle().title());
+                        Track currentTrack = musicPlayer.getCurrentTitle();
+                        if (currentTrack != null) {
+                            bottomTitle.setText(currentTrack.title());
+                        }
                     }
                     popup.getMenu().findItem(R.id.action_loop).setChecked(false);
                     item.setChecked(true);
@@ -77,5 +86,9 @@ public class BottomOptions {
 
             popup.show();
         });
+    }
+
+    public void setPlaylistName(String playlistName) {
+        this.playListName = playlistName;
     }
 }
