@@ -7,7 +7,6 @@ import android.widget.Toast;
 
 import androidx.documentfile.provider.DocumentFile;
 
-import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
 import java.util.ArrayList;
@@ -18,13 +17,13 @@ public class FileManager {
     private static final String PLAYLISTS_CONFIG_FILE_NAME = "playlists.json";
     private final Uri musicDirectoryUri;
     private final Context context;
-    private final MusicUtility musicUtility;
     private final JSON playlistsConfig;
+    private final List<Track> allTracks;
 
-    public FileManager(Uri musicDirectoryUri, Context context, MusicUtility musicUtility) {
+    public FileManager(Uri musicDirectoryUri, Context context, List<Track> allTracks) {
         this.musicDirectoryUri = musicDirectoryUri;
         this.context = context;
-        this.musicUtility = musicUtility;
+        this.allTracks = allTracks;
 
         DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
         if (rootDir == null) {
@@ -74,7 +73,12 @@ public class FileManager {
 
     public List<Track> loadPlaylistMusicFiles(String playlistName) {
         List<Track> result;
-        result = playlistsConfig.readList(playlistName, Track.class);
+        if (playlistName == null) {
+            result = allTracks;
+        } else {
+            result = playlistsConfig.readList(playlistName, Track.class);
+        }
+
         return result;
     }
 
@@ -190,28 +194,4 @@ public class FileManager {
             Toast.makeText(context, "Error updating playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
-
-    /**
-     * Creates a new subfolder in the main music directory.
-     *
-     * @param name The name for the new folder.
-     * @return true if successful, false otherwise.
-     */
-    public boolean createFolder(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            return false;
-        }
-        DocumentFile rootDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
-        if (rootDir != null && rootDir.isDirectory()) {
-            // Check if a folder with that name already exists
-            if (rootDir.findFile(name) != null) {
-                Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show();
-                return false;
-            }
-            DocumentFile newDir = rootDir.createDirectory(name);
-            return newDir != null && newDir.exists();
-        }
-        return false;
-    }
-
 }

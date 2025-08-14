@@ -65,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private Track lastTrack;
     private TextView bottomTitle;
     private ImageButton bottomPlay;
-    private ImageButton searchIcon;
     private SearchView searchView;
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
@@ -91,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
 
-        searchIcon = findViewById(R.id.search_icon);
+        ImageButton searchIcon = findViewById(R.id.search_icon);
         searchView = findViewById(R.id.track_search_view);
 
         // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
@@ -133,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
                 // Permissions are still valid, proceed as normal
                 try {
                     timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-                    fileManager = new FileManager(musicDirectoryUri, this, musicUtility);
+                    fileManager = new FileManager(musicDirectoryUri, this, allTracks);
                     loadAndShowTracks();
                 } catch (Exception e) {
                     Log.e("MainActivity", "Failed to initialize FileManager or JSON config", e);
@@ -465,7 +464,7 @@ public class MainActivity extends AppCompatActivity {
 
                         try {
                             timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
-                            fileManager = new FileManager(musicDirectoryUri, MainActivity.this, musicUtility);
+                            fileManager = new FileManager(musicDirectoryUri, MainActivity.this, allTracks);
                             adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
                             loadAndShowTracks();
                         } catch (Exception e) {
