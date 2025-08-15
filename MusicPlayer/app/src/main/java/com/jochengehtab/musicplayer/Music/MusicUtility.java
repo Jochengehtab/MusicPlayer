@@ -305,7 +305,7 @@ public class MusicUtility {
         return mixEnabled;
     }
 
-    public boolean isInitialized() {
+    private boolean isInitialized() {
         return mediaPlayer != null;
     }
 }

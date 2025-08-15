@@ -57,9 +57,8 @@ public class BottomOptions {
                     // uncheck the other
                     popup.getMenu().findItem(R.id.action_mix).setChecked(false);
                     item.setChecked(looping);
-                    if (musicUtility.isInitialized()) {
-                        musicUtility.loopMediaPlayer(playbackListener);
-                    }
+                    musicUtility.loopMediaPlayer(playbackListener);
+
                     return true;
 
                 } else if (id == R.id.action_mix) {

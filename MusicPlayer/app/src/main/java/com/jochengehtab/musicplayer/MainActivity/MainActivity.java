@@ -380,12 +380,8 @@ public class MainActivity extends AppCompatActivity {
             musicUtility.pause();
         }
         // If a song is paused (initialized but not playing), resume it.
-        else if (musicUtility.isInitialized()) {
-            musicUtility.resume();
-        }
-        // If there's no song loaded in the player, play the last selected one.
         else {
-            musicUtility.play(lastTrack.uri(), playbackListener);
+            musicUtility.resume();
         }
 
         // After any action, update the icon to reflect the new state.
