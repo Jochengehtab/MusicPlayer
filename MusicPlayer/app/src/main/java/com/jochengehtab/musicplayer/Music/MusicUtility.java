@@ -22,18 +22,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class MusicUtility {
-    private MediaPlayer mediaPlayer;
     private final Context context;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
     private final Consumer<String> updateBottomTitle;
     private final Runnable updateBottomPlayIcon;
-
+    private final Random random = new Random();
+    private MediaPlayer mediaPlayer;
     private boolean loopEnabled = false;
     private boolean mixEnabled = false;
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
-    private final Random random = new Random();
 
     public MusicUtility(Context context, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.context = context;
@@ -233,37 +232,6 @@ public class MusicUtility {
     }
 
 
-    public boolean toggleLoop() {
-        loopEnabled = !loopEnabled;
-        return loopEnabled;
-    }
-
-    public synchronized void cancelMix() {
-        cancelToken.set(true);
-        mixEnabled = false;
-        MainActivity.isMixPlaying = false;
-    }
-
-    public synchronized Track getCurrentTitle() {
-        if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {
-            return null;
-        }
-        return playQueue.get(currentIndex);
-    }
-
-    public synchronized void stopAndCancel() {
-        cancelToken.set(true);
-        stopAndRelease();
-        mixEnabled = false;
-        MainActivity.isMixPlaying = false;
-    }
-
-    public void pause() {
-        if (isInitialized() && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-        }
-    }
-
     public void loopMediaPlayer(OnPlaybackStateListener listener) {
         if (!isInitialized()) {
             throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
@@ -290,12 +258,35 @@ public class MusicUtility {
         }
     }
 
-    public boolean isLooping() {
+    public boolean toggleLoop() {
+        loopEnabled = !loopEnabled;
         return loopEnabled;
     }
+    
+    public synchronized void stopAndCancel() {
+        cancelToken.set(true);
+        if (isInitialized()) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        mixEnabled = false;
+        MainActivity.isMixPlaying = false;
+    }
 
-    public boolean isMixing() {
-        return mixEnabled;
+
+    public synchronized Track getCurrentTitle() {
+        if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {
+            return null;
+        }
+        return playQueue.get(currentIndex);
+    }
+
+
+    public void pause() {
+        if (isInitialized() && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
     }
 
     /**
@@ -307,6 +298,7 @@ public class MusicUtility {
         }
     }
 
+
     /**
      * Returns true if the internal MediaPlayer exists and is currently playing.
      */
@@ -314,15 +306,12 @@ public class MusicUtility {
         return isInitialized() && mediaPlayer.isPlaying();
     }
 
-    /**
-     * Stop & release resources.
-     */
-    public void stopAndRelease() {
-        if (isInitialized()) {
-            mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
+    public boolean isLooping() {
+        return loopEnabled;
+    }
+
+    public boolean isMixing() {
+        return mixEnabled;
     }
 
     public boolean isInitialized() {

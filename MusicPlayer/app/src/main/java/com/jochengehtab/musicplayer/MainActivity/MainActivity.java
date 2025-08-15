@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 new ArrayList<>(),
                 track -> {
-                    musicUtility.cancelMix();
+                    musicUtility.stopAndCancel();
                     lastTrack = track;
                     bottomTitle.setText(track.title());
                     bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
