@@ -143,22 +143,15 @@ public class MusicUtility {
         }
     }
 
-    public int getTrackDuration(Uri uri) {
-        try {
-            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
-            if (mediaPlayer != null) {
-                int durationMs = mediaPlayer.getDuration();
-                mediaPlayer.release();
-                return (durationMs + 500) / 1000;
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve duration", e);
+    /**
+     * Plays a given list of tracks in order.
+     *
+     * @param musicFiles The list of tracks to play.
+     */
+    public synchronized void playList(List<Track> musicFiles, boolean shouldMix) {
+        if (musicFiles == null || musicFiles.isEmpty()) {
+            return;
         }
-
-        throw new RuntimeException("Found no length for URI: " + uri);
-    }
-
-    public synchronized void playMix(List<Track> musicFiles) {
         cancelToken.set(false);
 
         mixEnabled = true;
@@ -166,28 +159,11 @@ public class MusicUtility {
         loopEnabled = false;
 
         playQueue = new ArrayList<>(musicFiles);
-        Collections.shuffle(playQueue, random);
-        currentIndex = 0;
 
-        playNextInQueue();
-    }
-
-    /**
-     * Plays a given list of tracks in order.
-     *
-     * @param musicFiles The list of tracks to play.
-     */
-    public synchronized void playList(List<Track> musicFiles) {
-        if (musicFiles == null || musicFiles.isEmpty()) {
-            return;
+        if (shouldMix) {
+            Collections.shuffle(playQueue, random);
         }
-        cancelToken.set(false);
 
-        mixEnabled = true; // Treat as a "mix" for playback control
-        MainActivity.isMixPlaying = true;
-        loopEnabled = false;
-
-        playQueue = new ArrayList<>(musicFiles); // No shuffle
         currentIndex = 0;
 
         playNextInQueue();
@@ -262,7 +238,7 @@ public class MusicUtility {
         loopEnabled = !loopEnabled;
         return loopEnabled;
     }
-    
+
     public synchronized void stopAndCancel() {
         cancelToken.set(true);
         if (isInitialized()) {
@@ -274,6 +250,21 @@ public class MusicUtility {
         MainActivity.isMixPlaying = false;
     }
 
+
+    public int getTrackDuration(Uri uri) {
+        try {
+            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
+            if (mediaPlayer != null) {
+                int durationMs = mediaPlayer.getDuration();
+                mediaPlayer.release();
+                return (durationMs + 500) / 1000;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve duration", e);
+        }
+
+        throw new RuntimeException("Found no length for URI: " + uri);
+    }
 
     public synchronized Track getCurrentTitle() {
         if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {

@@ -430,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Now, start playing the loaded list.
         if (!playlistTracks.isEmpty()) {
-            musicUtility.playList(playlistTracks);
+            musicUtility.playList(playlistTracks, false);
             updatePlayButtonIcon();
             Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
         } else {

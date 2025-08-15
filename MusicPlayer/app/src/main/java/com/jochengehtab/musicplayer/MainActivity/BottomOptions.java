@@ -66,7 +66,7 @@ public class BottomOptions {
                     if (fileManager != null) {
                         MainActivity.isMixPlaying = true;
                         List<Track> updatedPlaylist = fileManager.loadPlaylistMusicFiles(playListName);
-                        musicUtility.playMix(updatedPlaylist);
+                        musicUtility.playList(updatedPlaylist, true);
 
                         bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
                         Track currentTrack = musicUtility.getCurrentTitle();
