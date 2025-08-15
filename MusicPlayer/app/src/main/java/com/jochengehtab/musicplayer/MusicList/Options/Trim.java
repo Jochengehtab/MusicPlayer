@@ -124,7 +124,7 @@ public class Trim {
                 Toast.makeText(context, "End must be > start", Toast.LENGTH_SHORT).show();
                 return;
             }
-            musicUtility.playSegment(track.uri(), startSec, endSec, null);
+            musicUtility.play(track.uri(), null, startSec, endSec);
         });
 
         // OK button: backup original and save new timestamps

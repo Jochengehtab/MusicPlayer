@@ -33,58 +33,84 @@ public class MusicUtility {
     private boolean mixEnabled = false;
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
+    private final OnPlaybackStateListener onPlaybackStateListener;
 
     public MusicUtility(Context context, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.context = context;
         this.updateBottomPlayIcon = updateBottomPlayIcon;
         this.updateBottomTitle = updateBottomTitle;
+        this.onPlaybackStateListener = new OnPlaybackStateListener() {
+            @Override
+            public void onPlaybackStarted() {
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                synchronized (MusicUtility.this) {
+                    if (cancelToken.get()) {
+                        return;
+                    }
+                    currentIndex++;
+                    playNextInQueue();
+                }
+            }
+        };
     }
 
     /**
      * Play either the trimmed segment (if timestamps exist) or the full track.
      * Notifies the single listener when playback starts and when it ends.
      */
-    public void play(Uri uri, OnPlaybackStateListener listener) {
+    public void play(Uri uri, OnPlaybackStateListener listener, int... timespan) {
         if (isInitialized()) {
             mediaPlayer.release();
         }
         mediaPlayer = new MediaPlayer();
 
-        // Try to read existing timestamps
-        Integer[] timestamps = timestampsConfig.readArray(
-                FileManager.getUriHash(uri), Integer[].class
-        );
+        int startSeconds;
+        int endSeconds;
 
-        // If timestamps don't exist, this is a new track.
-        // Calculate duration and write default timestamps now.
-        if (timestamps == null) {
-            try {
-                // This is the expensive call, but now it only happens once per new track.
-                final int duration = getTrackDuration(uri);
-                // Create the default timestamp array [start, end, total_duration]
-                timestamps = new Integer[]{0, duration, duration};
-                // Write it to the config for all future plays
-                timestampsConfig.write(FileManager.getUriHash(uri), timestamps);
-            } catch (RuntimeException e) {
-                Toast.makeText(context, "Error getting track info: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                // Abort playback if we can't get info
-                if (mediaPlayer != null) {
-                    mediaPlayer.release();
-                    mediaPlayer = null;
+        // Check if start and end times are provided via the timespan parameter
+        if (timespan != null && timespan.length >= 2) {
+            startSeconds = timespan[0];
+            endSeconds = timespan[1];
+        } else {
+
+            // Try to read existing timestamps
+            Integer[] timestamps = timestampsConfig.readArray(
+                    FileManager.getUriHash(uri), Integer[].class
+            );
+
+            // If timestamps don't exist, this is a new track.
+            // Calculate duration and write default timestamps now.
+            if (timestamps == null) {
+                try {
+                    // This is the expensive call, but now it only happens once per new track.
+                    final int duration = getTrackDuration(uri);
+                    // Create the default timestamp array [start, end, total_duration]
+                    timestamps = new Integer[]{0, duration, duration};
+                    // Write it to the config for all future plays
+                    timestampsConfig.write(FileManager.getUriHash(uri), timestamps);
+                } catch (RuntimeException e) {
+                    Toast.makeText(context, "Error getting track info: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    // Abort playback if we can't get info
+                    if (mediaPlayer != null) {
+                        mediaPlayer.release();
+                        mediaPlayer = null;
+                    }
+                    if (listener != null) {
+                        // Notify UI that nothing is playing
+                        listener.onPlaybackStopped();
+                    }
+                    return;
                 }
-                if (listener != null) {
-                    // Notify UI that nothing is playing
-                    listener.onPlaybackStopped();
-                }
-                return;
             }
+
+            // Now we are guaranteed to have timestamps.
+            startSeconds = timestamps[0];
+            endSeconds = timestamps[1];
         }
-
-        // Now we are guaranteed to have timestamps.
-        int startSeconds = timestamps[0];
-        int endSeconds = timestamps[1];
-
-        if (startSeconds == endSeconds) {
+        if (startSeconds >= endSeconds) {
             Toast.makeText(context,
                     "Start and End time are the same!", Toast.LENGTH_SHORT).show();
             // Abort playback
@@ -98,20 +124,9 @@ public class MusicUtility {
             return;
         }
 
-        // We can now reliably call playSegment for all cases
-        playSegment(uri, startSeconds, endSeconds, listener);
-    }
-
-    public void playSegment(Uri uri, int startSec, int endSec, OnPlaybackStateListener listener) {
-        if (isInitialized()) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-        mediaPlayer = new MediaPlayer();
-
         try {
             mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSec * 1000));
+            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSeconds * 1000));
             mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
                 mediaPlayer.start();
                 // Notify the listener that playback has started
@@ -119,7 +134,7 @@ public class MusicUtility {
                     listener.onPlaybackStarted();
                 }
 
-                int durationMs = (endSec - startSec) * 1000;
+                int durationMs = (endSeconds - startSeconds) * 1000;
                 handler.postDelayed(() -> {
                     if (mediaPlayer != this.mediaPlayer) {
                         return; // This player is stale, do nothing
@@ -188,25 +203,8 @@ public class MusicUtility {
 
         Track nextTrack = playQueue.get(currentIndex);
         updateBottomTitle.accept(nextTrack.title());
-        play(nextTrack.uri(), new OnPlaybackStateListener() {
-            @Override
-            public void onPlaybackStarted() {
-            }
-
-            @Override
-            public void onPlaybackStopped() {
-                // We lock M.this to prevent race condition
-                synchronized (MusicUtility.this) {
-                    if (cancelToken.get()) {
-                        return;
-                    }
-                    currentIndex++;
-                    playNextInQueue();
-                }
-            }
-        });
+        play(nextTrack.uri(), onPlaybackStateListener);
     }
-
 
     public void loopMediaPlayer(OnPlaybackStateListener listener) {
         if (!isInitialized()) {
@@ -250,6 +248,21 @@ public class MusicUtility {
         MainActivity.isMixPlaying = false;
     }
 
+    public void pause() {
+        if (isInitialized() && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
+
+    /**
+     * Resume if paused.
+     */
+    public void resume() {
+        if (isInitialized() && !mediaPlayer.isPlaying()) {
+            mediaPlayer.start();
+        }
+    }
+
 
     public int getTrackDuration(Uri uri) {
         try {
@@ -271,22 +284,6 @@ public class MusicUtility {
             return null;
         }
         return playQueue.get(currentIndex);
-    }
-
-
-    public void pause() {
-        if (isInitialized() && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-        }
-    }
-
-    /**
-     * Resume if paused.
-     */
-    public void resume() {
-        if (isInitialized() && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-        }
     }
 
 
