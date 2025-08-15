@@ -9,17 +9,36 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
+import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class MusicUtility {
+    private MediaPlayer mediaPlayer;
     private final Context context;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private MediaPlayer mediaPlayer;
+    private final AtomicBoolean cancelToken = new AtomicBoolean(false);
+    private final Consumer<String> updateBottomTitle;
+    private final Runnable updateBottomPlayIcon;
 
-    public MusicUtility(Context context) {
+    private boolean loopEnabled = false;
+    private boolean mixEnabled = false;
+    private List<Track> playQueue = new ArrayList<>();
+    private int currentIndex = 0;
+    private final Random random = new Random();
+
+    public MusicUtility(Context context, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.context = context;
+        this.updateBottomPlayIcon = updateBottomPlayIcon;
+        this.updateBottomTitle = updateBottomTitle;
     }
 
     /**
@@ -84,10 +103,6 @@ public class MusicUtility {
         playSegment(uri, startSeconds, endSeconds, listener);
     }
 
-    /**
-     * Play a segment of the given URI from startSec to endSec (in seconds).
-     * Stops automatically at endSec.
-     */
     public void playSegment(Uri uri, int startSec, int endSec, OnPlaybackStateListener listener) {
         if (isInitialized()) {
             mediaPlayer.release();
@@ -129,11 +144,126 @@ public class MusicUtility {
         }
     }
 
+    public int getTrackDuration(Uri uri) {
+        try {
+            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
+            if (mediaPlayer != null) {
+                int durationMs = mediaPlayer.getDuration();
+                mediaPlayer.release();
+                return (durationMs + 500) / 1000;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve duration", e);
+        }
+
+        throw new RuntimeException("Found no length for URI: " + uri);
+    }
+
+    public synchronized void playMix(List<Track> musicFiles) {
+        cancelToken.set(false);
+
+        mixEnabled = true;
+        MainActivity.isMixPlaying = true;
+        loopEnabled = false;
+
+        playQueue = new ArrayList<>(musicFiles);
+        Collections.shuffle(playQueue, random);
+        currentIndex = 0;
+
+        playNextInQueue();
+    }
+
     /**
-     * Make whatever is currently loaded loop forever.
-     * When the track ends, onPlaybackStopped() is called,
-     * then the track is rewound and onPlaybackStarted() is called again.
+     * Plays a given list of tracks in order.
+     *
+     * @param musicFiles The list of tracks to play.
      */
+    public synchronized void playList(List<Track> musicFiles) {
+        if (musicFiles == null || musicFiles.isEmpty()) {
+            return;
+        }
+        cancelToken.set(false);
+
+        mixEnabled = true; // Treat as a "mix" for playback control
+        MainActivity.isMixPlaying = true;
+        loopEnabled = false;
+
+        playQueue = new ArrayList<>(musicFiles); // No shuffle
+        currentIndex = 0;
+
+        playNextInQueue();
+    }
+
+
+    private synchronized void playNextInQueue() {
+        if (cancelToken.get()) {
+            MainActivity.isMixPlaying = false;
+            updateBottomPlayIcon.run();
+            return;
+        }
+        if (currentIndex >= playQueue.size()) {
+            mixEnabled = false;
+            MainActivity.isMixPlaying = false;
+            updateBottomPlayIcon.run();
+            if (!loopEnabled) {
+                return;
+            }
+            currentIndex = 0;
+        }
+
+        Track nextTrack = playQueue.get(currentIndex);
+        updateBottomTitle.accept(nextTrack.title());
+        play(nextTrack.uri(), new OnPlaybackStateListener() {
+            @Override
+            public void onPlaybackStarted() {
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                // We lock M.this to prevent race condition
+                synchronized (MusicUtility.this) {
+                    if (cancelToken.get()) {
+                        return;
+                    }
+                    currentIndex++;
+                    playNextInQueue();
+                }
+            }
+        });
+    }
+
+
+    public boolean toggleLoop() {
+        loopEnabled = !loopEnabled;
+        return loopEnabled;
+    }
+
+    public synchronized void cancelMix() {
+        cancelToken.set(true);
+        mixEnabled = false;
+        MainActivity.isMixPlaying = false;
+    }
+
+    public synchronized Track getCurrentTitle() {
+        if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {
+            return null;
+        }
+        return playQueue.get(currentIndex);
+    }
+
+    public synchronized void stopAndCancel() {
+        cancelToken.set(true);
+        stopAndRelease();
+        mixEnabled = false;
+        MainActivity.isMixPlaying = false;
+    }
+
+    public void pause() {
+        if (isInitialized() && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
+
     public void loopMediaPlayer(OnPlaybackStateListener listener) {
         if (!isInitialized()) {
             throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
@@ -160,25 +290,12 @@ public class MusicUtility {
         }
     }
 
-    public int getTrackDuration(Uri uri) {
-        try {
-            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
-            if (mediaPlayer != null) {
-                int durationMs = mediaPlayer.getDuration();
-                mediaPlayer.release();
-                return (durationMs + 500) / 1000;
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve duration", e);
-        }
-
-        throw new RuntimeException("Found no length for URI: " + uri);
+    public boolean isLooping() {
+        return loopEnabled;
     }
 
-    public void pause() {
-        if (isInitialized() && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-        }
+    public boolean isMixing() {
+        return mixEnabled;
     }
 
     /**

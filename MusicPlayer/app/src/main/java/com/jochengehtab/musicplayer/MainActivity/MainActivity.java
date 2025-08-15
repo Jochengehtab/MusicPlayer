@@ -28,7 +28,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
-import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
@@ -57,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
             | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
     private Uri musicDirectoryUri;
     private FileManager fileManager;
-    private MusicPlayer musicPlayer;
     private MusicUtility musicUtility;
     private SharedPreferences prefs;
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
@@ -80,8 +78,7 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         restorePreferences();
 
-        musicUtility = new MusicUtility(this);
-        musicPlayer = new MusicPlayer(musicUtility, this::updateBottomTitle, this::updatePlayButtonIcon);
+        musicUtility = new MusicUtility(this, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         initFolderChooser();
 
@@ -112,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 new ArrayList<>(),
                 track -> {
-                    musicPlayer.cancelMix();
+                    musicUtility.cancelMix();
                     lastTrack = track;
                     bottomTitle.setText(track.title());
                     bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
@@ -155,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.setFileManager(fileManager);
 
-        bottomOptions = new BottomOptions(this, musicUtility, musicPlayer, fileManager);
+        bottomOptions = new BottomOptions(this, musicUtility, fileManager);
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
@@ -343,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
      * @param playlistName The name of the playlist to load.
      */
     private void loadAndShowPlaylist(String playlistName) {
-        musicPlayer.stopAndCancel();
+        musicUtility.stopAndCancel();
 
         List<Track> playlistTracks;
         if (ALL_TRACKS_PLAYLIST_NAME.equals(playlistName)) {
@@ -368,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
     private void handlePlayPauseClick() {
         // If a mix or playlist is playing, the main button's job is to cancel it.
         if (isMixPlaying) {
-            musicPlayer.stopAndCancel();
+            musicUtility.stopAndCancel();
             updatePlayButtonIcon();
             return;
         }
@@ -433,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Now, start playing the loaded list.
         if (!playlistTracks.isEmpty()) {
-            musicPlayer.playList(playlistTracks);
+            musicUtility.playList(playlistTracks);
             updatePlayButtonIcon();
             Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
         } else {
@@ -485,6 +482,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        musicPlayer.stopAndCancel();
+        musicUtility.stopAndCancel();
     }
 }

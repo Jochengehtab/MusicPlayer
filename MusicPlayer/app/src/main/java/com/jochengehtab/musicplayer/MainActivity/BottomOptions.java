@@ -5,7 +5,6 @@ import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
-import com.jochengehtab.musicplayer.Music.MusicPlayer;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.MusicList.Track;
@@ -17,15 +16,13 @@ import java.util.List;
 public class BottomOptions {
     private final Context context;
 
-    private final MusicPlayer musicPlayer;
     private final MusicUtility musicUtility;
     private final FileManager fileManager;
     private String playListName;
 
-    public BottomOptions(Context context, MusicUtility musicUtility, MusicPlayer musicPlayer, FileManager fileManager) {
+    public BottomOptions(Context context, MusicUtility musicUtility, FileManager fileManager) {
         this.context = context;
         this.musicUtility = musicUtility;
-        this.musicPlayer = musicPlayer;
         this.fileManager = fileManager;
     }
 
@@ -42,9 +39,9 @@ public class BottomOptions {
             );
 
             // 2) Pre‐check the currently active mode, if any
-            int checkedId = musicPlayer.isLooping()
+            int checkedId = musicUtility.isLooping()
                     ? R.id.action_loop
-                    : musicPlayer.isMixing()
+                    : musicUtility.isMixing()
                     ? R.id.action_mix
                     : -1;
 
@@ -56,7 +53,7 @@ public class BottomOptions {
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_loop) {
-                    boolean looping = musicPlayer.toggleLoop();
+                    boolean looping = musicUtility.toggleLoop();
                     // uncheck the other
                     popup.getMenu().findItem(R.id.action_mix).setChecked(false);
                     item.setChecked(looping);
@@ -69,10 +66,10 @@ public class BottomOptions {
                     if (fileManager != null) {
                         MainActivity.isMixPlaying = true;
                         List<Track> updatedPlaylist = fileManager.loadPlaylistMusicFiles(playListName);
-                        musicPlayer.playMix(updatedPlaylist);
+                        musicUtility.playMix(updatedPlaylist);
 
                         bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                        Track currentTrack = musicPlayer.getCurrentTitle();
+                        Track currentTrack = musicUtility.getCurrentTitle();
                         if (currentTrack != null) {
                             bottomTitle.setText(currentTrack.title());
                         }
