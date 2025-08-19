@@ -352,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
         allTracks = new ArrayList<>(playlistTracks);
         adapter.updateList(allTracks);
 
-        bottomTitle.setText("No Track Selected");
+        bottomTitle.setText(R.string.no_track_selected);
 
         updatePlayButtonIcon();
         // Clear the last-clicked track since we are in a new context
@@ -363,12 +363,6 @@ public class MainActivity extends AppCompatActivity {
      * Handles clicks on the main play/pause button.
      */
     private void handlePlayPauseClick() {
-        // If a mix or playlist is playing, the main button's job is to cancel it.
-        if (isMixPlaying) {
-            musicUtility.stopAndCancel();
-            updatePlayButtonIcon();
-            return;
-        }
 
         // If no track has ever been selected, do nothing.
         if (lastTrack == null) {
