@@ -92,8 +92,6 @@ public class MainActivity extends AppCompatActivity {
         playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
-                // We can optionally call the update method here for robustness,
-                // but the immediate UI change is handled on click.
                 runOnUiThread(MainActivity.this::updatePlayButtonIcon);
             }
 
@@ -129,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                     fileManager = new FileManager(musicDirectoryUri, this, allTracks);
-                    loadAndShowTracks();
                 } catch (Exception e) {
                     Log.e("MainActivity", "Failed to initialize FileManager or JSON config", e);
                     Toast.makeText(this, "Error initializing storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -198,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
         searchView.setOnCloseListener(() -> {
             searchView.setQuery("", false);
             searchView.startAnimation(slideUp);
-            return true; // Return true to indicate we've handled the event
+            return true;
         });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -213,6 +210,17 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
+
+        if (fileManager != null) {
+            String lastPlaylistName = fileManager.getCurrentPlaylistName();
+            if (lastPlaylistName != null) {
+                loadAndShowPlaylist(lastPlaylistName);
+                bottomOptions.setPlaylistName(lastPlaylistName);
+            } else {
+                loadAndShowTracks();
+            }
+        }
+
     }
 
     private void filterTracks(String query) {
@@ -269,6 +277,7 @@ public class MainActivity extends AppCompatActivity {
                         dialog.dismiss();
                         loadAndShowPlaylist(playlistName);
                         bottomOptions.setPlaylistName(playlistName);
+                        fileManager.setCurrentPlaylistName(playlistName);
                     }
 
                     @Override

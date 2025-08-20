@@ -12,6 +12,7 @@ import com.jochengehtab.musicplayer.MusicList.Track;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class FileManager {
     private static final String PLAYLISTS_CONFIG_FILE_NAME = "playlists.json";
@@ -90,8 +91,13 @@ public class FileManager {
      */
     public List<String> listPlaylists() {
         try {
-            // getKeys returns a Set, so we convert it to a List
-            return new ArrayList<>(playlistsConfig.getKeys());
+            Set<String> keys = playlistsConfig.getKeys();
+
+            // Remove current_playlist
+            keys.remove("current_playlist");
+
+            // Convert to an Arraylist
+            return new ArrayList<>(keys);
         } catch (RuntimeException e) {
             Log.e("FileManager", "Error listing playlists", e);
             Toast.makeText(context, "Could not load playlists.", Toast.LENGTH_SHORT).show();
@@ -193,5 +199,13 @@ public class FileManager {
             Log.e("PlaylistError", "Error updating playlist. See stack trace.", e);
             Toast.makeText(context, "Error updating playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
+    }
+
+    public void setCurrentPlaylistName(String name) {
+        playlistsConfig.write("current_playlist", name);
+    }
+
+    public String getCurrentPlaylistName() {
+        return playlistsConfig.read("current_playlist", String.class);
     }
 }

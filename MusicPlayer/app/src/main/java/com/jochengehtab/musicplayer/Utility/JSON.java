@@ -120,6 +120,28 @@ public class JSON {
     }
 
     /**
+     * Reads a single value from the JSON file.
+     *
+     * @param key The key of the value to read.
+     * @param classOfT The class of the object to be returned.
+     * @return An object of type T, or null if the key doesn't exist.
+     */
+    public <T> T read(String key, Class<T> classOfT) {
+        try {
+            Map<String, JsonElement> root = readAsMap();
+            JsonElement element = root.get(key);
+            if (element == null || element.isJsonNull()) {
+                return null;
+            }
+            // Use our custom Gson instance to deserialize
+            return gson.fromJson(element, classOfT);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read value from config file: " + configFile.getName(), e);
+        }
+    }
+
+
+    /**
      * Reads a list from the JSON file.
      */
     public <E> List<E> readList(String key, Class<E> elementClass) {
