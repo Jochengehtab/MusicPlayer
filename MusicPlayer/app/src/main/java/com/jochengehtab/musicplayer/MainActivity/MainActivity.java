@@ -51,7 +51,6 @@ public class MainActivity extends AppCompatActivity {
     public static final String KEY_TREE_URI = "tree_uri";
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
     public static JSON timestampsConfig;
-    public static boolean isMixPlaying = false;
     private final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
     private Uri musicDirectoryUri;
@@ -60,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
     private TrackAdapter adapter;
-    private Track lastTrack;
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private SearchView searchView;
@@ -108,9 +106,10 @@ public class MainActivity extends AppCompatActivity {
         adapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
+
+                // Implementation of the OnItemClickListener
                 track -> {
                     musicUtility.stopAndCancel();
-                    lastTrack = track;
                     bottomTitle.setText(track.title());
                     bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
 
@@ -355,19 +354,12 @@ public class MainActivity extends AppCompatActivity {
         bottomTitle.setText(R.string.no_track_selected);
 
         updatePlayButtonIcon();
-        // Clear the last-clicked track since we are in a new context
-        lastTrack = null;
     }
 
     /**
      * Handles clicks on the main play/pause button.
      */
     private void handlePlayPauseClick() {
-
-        // If no track has ever been selected, do nothing.
-        if (lastTrack == null) {
-            return;
-        }
 
         // If a song is currently playing, pause it.
         if (musicUtility.isPlaying()) {
@@ -387,7 +379,7 @@ public class MainActivity extends AppCompatActivity {
      * It shows a stop icon if a playlist is active OR a single track is playing.
      */
     public void updatePlayButtonIcon() {
-        if (isMixPlaying || musicUtility.isPlaying()) {
+        if (musicUtility.isPlaying()) {
             bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
         } else {
             bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);

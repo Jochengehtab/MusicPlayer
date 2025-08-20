@@ -63,7 +63,6 @@ public class BottomOptions {
 
                 } else if (id == R.id.action_mix) {
                     if (fileManager != null) {
-                        MainActivity.isMixPlaying = true;
                         List<Track> updatedPlaylist = fileManager.loadPlaylistMusicFiles(playListName);
                         musicUtility.playList(updatedPlaylist, true);
 

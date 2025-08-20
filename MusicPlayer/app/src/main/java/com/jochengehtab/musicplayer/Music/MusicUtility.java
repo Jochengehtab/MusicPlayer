@@ -9,7 +9,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 
@@ -170,7 +169,6 @@ public class MusicUtility {
         cancelToken.set(false);
 
         mixEnabled = true;
-        MainActivity.isMixPlaying = true;
         loopEnabled = false;
 
         playQueue = new ArrayList<>(musicFiles);
@@ -187,13 +185,11 @@ public class MusicUtility {
 
     private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
-            MainActivity.isMixPlaying = false;
             updateBottomPlayIcon.run();
             return;
         }
         if (currentIndex >= playQueue.size()) {
             mixEnabled = false;
-            MainActivity.isMixPlaying = false;
             updateBottomPlayIcon.run();
             if (!loopEnabled) {
                 return;
@@ -245,7 +241,6 @@ public class MusicUtility {
             mediaPlayer = null;
         }
         mixEnabled = false;
-        MainActivity.isMixPlaying = false;
     }
 
     public void pause() {
