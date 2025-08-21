@@ -1,5 +1,7 @@
 package com.jochengehtab.musicplayer.Utility;
 
+import static com.jochengehtab.musicplayer.MainActivity.MainActivity.ALL_TRACKS_PLAYLIST_NAME;
+
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
@@ -49,7 +51,7 @@ public class FileManager {
     /**
      * Scans the selected folder and returns a List of Tracks (uri + filename).
      */
-    public ArrayList<Track> loadMusicFiles() {
+    private ArrayList<Track> loadMusicFiles() {
         ArrayList<Track> result = new ArrayList<>();
 
         if (musicDirectoryUri == null) {
@@ -116,6 +118,7 @@ public class FileManager {
             Toast.makeText(context, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
             return false;
         }
+
         try {
             List<String> existingPlaylists = listPlaylists();
             if (existingPlaylists.stream().anyMatch(p -> p.equalsIgnoreCase(name))) {
@@ -139,6 +142,15 @@ public class FileManager {
      * @return A list of tracks from the playlist, or an empty list if not found or empty.
      */
     public List<Track> loadTracksFromPlaylist(String playlistName) {
+
+        if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME) && !doesPlaylistExist(ALL_TRACKS_PLAYLIST_NAME)) {
+            ArrayList<Track> tracks = loadMusicFiles();
+            for (Track track : tracks) {
+                addTrackToPlaylist(ALL_TRACKS_PLAYLIST_NAME, track);
+            }
+            return tracks;
+        }
+
         try {
             List<Track> playlistTracks = playlistsConfig.readList(playlistName, Track.class);
             return Objects.requireNonNullElseGet(playlistTracks, ArrayList::new);
@@ -178,7 +190,7 @@ public class FileManager {
             // Read the existing list of tracks for the given playlist
             List<Track> playlistTracks = playlistsConfig.readList(playlistName, Track.class);
             if (playlistTracks == null) {
-                // This case shouldn't happen if playlists are created properly, but as a safeguard...
+                // This case shouldn't happen if playlists are created properly
                 playlistTracks = new ArrayList<>();
             }
 
@@ -201,11 +213,15 @@ public class FileManager {
         }
     }
 
-    public void setCurrentPlaylistName(String name) {
-        playlistsConfig.write("current_playlist", name);
+    public boolean doesPlaylistExist(String playListName) {
+        return playlistsConfig.readList(playListName, Track.class) != null;
     }
 
     public String getCurrentPlaylistName() {
         return playlistsConfig.read("current_playlist", String.class);
+    }
+
+    public void setCurrentPlaylistName(String name) {
+        playlistsConfig.write("current_playlist", name);
     }
 }

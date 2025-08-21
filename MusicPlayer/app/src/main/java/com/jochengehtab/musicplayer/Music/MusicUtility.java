@@ -27,12 +27,12 @@ public class MusicUtility {
     private final Consumer<String> updateBottomTitle;
     private final Runnable updateBottomPlayIcon;
     private final Random random = new Random();
+    private final OnPlaybackStateListener onPlaybackStateListener;
     private MediaPlayer mediaPlayer;
     private boolean loopEnabled = false;
     private boolean mixEnabled = false;
     private List<Track> playQueue = new ArrayList<>();
     private int currentIndex = 0;
-    private final OnPlaybackStateListener onPlaybackStateListener;
 
     public MusicUtility(Context context, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.context = context;

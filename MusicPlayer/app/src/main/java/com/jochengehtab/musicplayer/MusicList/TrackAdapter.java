@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -70,7 +69,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_add_to_playlist) {
-                    showPlaylistSelectionDialog(current); // Call the new method
+                    showPlaylistSelectionDialog(current);
                     return true;
                 } else if (id == R.id.edit) {
                     trim.showTrimDialog(current);
@@ -103,15 +102,12 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             return;
         }
 
-        // Use the new, fast method to get playlist names
         List<String> playlists = fileManager.listPlaylists();
 
         if (playlists.isEmpty()) {
             Toast.makeText(context, "No playlists created yet.", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        Log.i("hi", "hi10");
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 context,

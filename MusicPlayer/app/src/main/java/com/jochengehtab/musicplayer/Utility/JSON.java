@@ -122,7 +122,7 @@ public class JSON {
     /**
      * Reads a single value from the JSON file.
      *
-     * @param key The key of the value to read.
+     * @param key      The key of the value to read.
      * @param classOfT The class of the object to be returned.
      * @return An object of type T, or null if the key doesn't exist.
      */

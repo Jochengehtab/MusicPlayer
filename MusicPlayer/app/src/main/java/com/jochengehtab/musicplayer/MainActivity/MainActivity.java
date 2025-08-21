@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 loadAndShowPlaylist(lastPlaylistName);
                 bottomOptions.setPlaylistName(lastPlaylistName);
             } else {
-                loadAndShowTracks();
+                Toast.makeText(this, "The last Playlist was not found!", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -231,11 +231,7 @@ public class MainActivity extends AppCompatActivity {
         musicUtility.stopAndCancel();
 
         List<Track> playlistTracks;
-        if (ALL_TRACKS_PLAYLIST_NAME.equals(playlistName)) {
-            playlistTracks = fileManager.loadMusicFiles();
-        } else {
-            playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
-        }
+        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
 
         allTracks = new ArrayList<>(playlistTracks);
         adapter.updateList(allTracks);
@@ -288,13 +284,7 @@ public class MainActivity extends AppCompatActivity {
     private void loadPlaylistAndPlay(String playlistName) {
         List<Track> playlistTracks;
 
-        if (ALL_TRACKS_PLAYLIST_NAME.equals(playlistName)) {
-            // Case 1: The "All Tracks" virtual playlist is selected. Load all music files.
-            playlistTracks = fileManager.loadMusicFiles();
-        } else {
-            // Case 2: A regular playlist (sub-folder) is selected.
-            playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
-        }
+        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
 
         allTracks = new ArrayList<>(playlistTracks);
         adapter.updateList(allTracks);
@@ -307,11 +297,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Toast.makeText(MainActivity.this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void loadAndShowTracks() {
-        allTracks = fileManager.loadMusicFiles();
-        adapter.updateList(allTracks);
     }
 
     private void restorePreferences() {
@@ -334,7 +319,6 @@ public class MainActivity extends AppCompatActivity {
                             timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                             fileManager = new FileManager(musicDirectoryUri, MainActivity.this, allTracks);
                             adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
-                            loadAndShowTracks();
                         } catch (Exception e) {
                             Log.e("MainActivity", "Failed to initialize on folder pick", e);
                             Toast.makeText(this, "Error setting up storage: " + e.getMessage(), Toast.LENGTH_LONG).show();

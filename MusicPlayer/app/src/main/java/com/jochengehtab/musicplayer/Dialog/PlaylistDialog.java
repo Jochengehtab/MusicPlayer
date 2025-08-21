@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.Dialog;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.ALL_TRACKS_PLAYLIST_NAME;
-
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -99,7 +97,6 @@ public class PlaylistDialog {
 
         executor.execute(() -> {
             List<String> playlists = fileManager.listPlaylists();
-            playlists.add(0, ALL_TRACKS_PLAYLIST_NAME);
 
             handler.post(() -> {
                 progressBar.setVisibility(View.GONE);
