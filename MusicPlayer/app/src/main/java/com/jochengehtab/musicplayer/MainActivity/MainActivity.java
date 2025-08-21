@@ -5,33 +5,26 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.jochengehtab.musicplayer.Dialog.PlaylistDialog;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
-import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
-import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
@@ -42,8 +35,6 @@ import com.jochengehtab.musicplayer.Utility.PermissionUtility;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
@@ -64,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private SearchView searchView;
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
-    private BottomOptions bottomOptions;
+    private PlaylistDialog playlistDialog;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -148,7 +139,8 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.setFileManager(fileManager);
 
-        bottomOptions = new BottomOptions(this, musicUtility, fileManager);
+        BottomOptions bottomOptions = new BottomOptions(this, musicUtility, fileManager);
+        playlistDialog = new PlaylistDialog(fileManager, this, bottomOptions, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
 
         chooseButton.setOnClickListener(v -> pickDirectoryLauncher.launch(null));
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
@@ -177,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         ImageButton burgerMenu = findViewById(R.id.burger_menu);
-        burgerMenu.setOnClickListener(v -> showPlaylistDialog());
+        burgerMenu.setOnClickListener(v -> playlistDialog.showPlaylistDialog());
 
         searchIcon.setOnClickListener(v -> {
             if (searchView.getVisibility() == View.GONE) {
@@ -220,7 +212,6 @@ public class MainActivity extends AppCompatActivity {
                 loadAndShowTracks();
             }
         }
-
     }
 
     private void filterTracks(String query) {
@@ -228,117 +219,6 @@ public class MainActivity extends AppCompatActivity {
                 .filter(track -> track.title().toLowerCase().contains(query.toLowerCase()))
                 .collect(Collectors.toList());
         adapter.updateList(filteredTracks);
-    }
-
-    private void showPlaylistDialog() {
-        if (fileManager == null) {
-            Toast.makeText(this, "Please select a music directory first.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_playlist_selector, null);
-        RecyclerView playlistRv = dialogView.findViewById(R.id.playlist_list);
-        ProgressBar progressBar = dialogView.findViewById(R.id.playlist_progress_bar);
-        Button newPlaylistButton = dialogView.findViewById(R.id.button_create_playlist);
-        Button cancelButton = dialogView.findViewById(R.id.button_cancel);
-
-        final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(dialogView)
-                .create();
-
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        Handler handler = new Handler(Looper.getMainLooper());
-
-        // Show the dialog immediately with the progress bar visible
-        dialog.show();
-
-        executor.execute(() -> {
-            // This is the slow operation
-            List<String> playlists = fileManager.listPlaylists();
-            playlists.add(0, ALL_TRACKS_PLAYLIST_NAME);
-
-            // Post the result back to the main thread
-            handler.post(() -> {
-                // Hide the progress bar and show the list
-                progressBar.setVisibility(View.GONE);
-                playlistRv.setVisibility(View.VISIBLE);
-
-                playlistRv.setLayoutManager(new LinearLayoutManager(this));
-
-                PlaylistAdapter playlistAdapter = new PlaylistAdapter(this, playlists, new PlaylistActionsListener() {
-                    @Override
-                    public void onPlayClicked(String playlistName) {
-                        dialog.dismiss();
-                        loadPlaylistAndPlay(playlistName);
-                    }
-
-                    @Override
-                    public void onSelectClicked(String playlistName) {
-                        dialog.dismiss();
-                        loadAndShowPlaylist(playlistName);
-                        bottomOptions.setPlaylistName(playlistName);
-                        fileManager.setCurrentPlaylistName(playlistName);
-                    }
-
-                    @Override
-                    public void onDeleteClicked(String playlistName) {
-                        if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
-                            Toast.makeText(MainActivity.this, "Cannot delete 'All Tracks' list.", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("Delete Playlist")
-                                .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
-                                .setPositiveButton("Delete", (d, which) -> {
-                                    if (fileManager.deletePlaylist(playlistName)) {
-                                        dialog.dismiss();
-                                        showPlaylistDialog(); // Refresh the dialog
-                                    }
-                                })
-                                .setNegativeButton("Cancel", null)
-                                .show();
-                    }
-                });
-                playlistRv.setAdapter(playlistAdapter);
-            });
-        });
-
-        // Set up button listeners outside the background task
-        newPlaylistButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            showCreatePlaylistDialog();
-        });
-
-        cancelButton.setOnClickListener(v -> dialog.dismiss());
-    }
-
-    /**
-     * Shows a dialog to get the name for a new playlist.
-     */
-    private void showCreatePlaylistDialog() {
-        final EditText input = new EditText(this);
-        new AlertDialog.Builder(MainActivity.this)
-                .setTitle("Enter Playlist Name")
-                .setView(input)
-                .setPositiveButton("Create", (d, which) -> {
-                    String name = input.getText().toString().trim();
-                    if (!name.isEmpty()) {
-                        // Use the renamed method
-                        if (fileManager.createPlaylist(name)) {
-                            Toast.makeText(this, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
-                            // Reopen the playlist selector to show the new playlist
-                            showPlaylistDialog();
-                        }
-                        // No "else" here, as createPlaylist now shows its own error toasts
-                    } else {
-                        Toast.makeText(this, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", (d, which) -> {
-                    // If cancelled, show the main playlist dialog again
-                    showPlaylistDialog();
-                })
-                .show();
     }
 
     /**
