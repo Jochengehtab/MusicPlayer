@@ -143,7 +143,8 @@ public class FileManager {
      */
     public List<Track> loadTracksFromPlaylist(String playlistName) {
 
-        if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME) && !doesPlaylistExist(ALL_TRACKS_PLAYLIST_NAME)) {
+        // In case playlistName is null our playlist file should be empty so we should create the all playlist
+        if ((playlistName == null  ||playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) && !doesPlaylistExist(ALL_TRACKS_PLAYLIST_NAME)) {
             ArrayList<Track> tracks = loadMusicFiles();
             for (Track track : tracks) {
                 addTrackToPlaylist(ALL_TRACKS_PLAYLIST_NAME, track);

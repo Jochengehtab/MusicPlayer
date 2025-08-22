@@ -205,12 +205,9 @@ public class MainActivity extends AppCompatActivity {
 
         if (fileManager != null) {
             String lastPlaylistName = fileManager.getCurrentPlaylistName();
-            if (lastPlaylistName != null) {
                 loadAndShowPlaylist(lastPlaylistName);
                 bottomOptions.setPlaylistName(lastPlaylistName);
-            } else {
-                Toast.makeText(this, "The last Playlist was not found!", Toast.LENGTH_SHORT).show();
-            }
+
         }
     }
 
