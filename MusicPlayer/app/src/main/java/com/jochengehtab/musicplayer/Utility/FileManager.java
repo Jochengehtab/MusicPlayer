@@ -12,6 +12,7 @@ import androidx.documentfile.provider.DocumentFile;
 import com.jochengehtab.musicplayer.MusicList.Track;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -136,25 +137,58 @@ public class FileManager {
     }
 
     /**
-     * Reads the track list for a given playlist from the central playlists.json file.
+     * Reads the track list for a given playlist from the central playlists.json file
+     * and then applies the specified sorting order.
      *
-     * @param playlistName The name of the playlist.
-     * @return A list of tracks from the playlist, or an empty list if not found or empty.
+     * @param playlistName The name of the playlist to load.
+     * @param sortOrder    The sorting order to apply ("A-Z" or "Date").
+     * @return A list of tracks from the playlist, sorted as requested.
      */
-    public List<Track> loadTracksFromPlaylist(String playlistName) {
-
-        // In case playlistName is null our playlist file should be empty so we should create the all playlist
-        if ((playlistName == null  ||playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) && !doesPlaylistExist(ALL_TRACKS_PLAYLIST_NAME)) {
-            ArrayList<Track> tracks = loadMusicFiles();
-            for (Track track : tracks) {
-                addTrackToPlaylist(ALL_TRACKS_PLAYLIST_NAME, track);
-            }
-            return tracks;
-        }
+    public List<Track> loadTracksFromPlaylist(String playlistName, String sortOrder) {
+        // If the playlist name is null, default to "All Tracks"
+        String effectivePlaylistName = (playlistName == null) ? ALL_TRACKS_PLAYLIST_NAME : playlistName;
 
         try {
-            List<Track> playlistTracks = playlistsConfig.readList(playlistName, Track.class);
-            return Objects.requireNonNullElseGet(playlistTracks, ArrayList::new);
+            // For any playlist, always read the list from the JSON file first
+            List<Track> playlistTracks = playlistsConfig.readList(effectivePlaylistName, Track.class);
+
+            // The playlist doesn't exist in the JSON file
+            if (playlistTracks == null) {
+                // "All Tracks" playlist we need to create it by scanning the folder once.
+                if (effectivePlaylistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
+                    ArrayList<Track> allFiles = loadMusicFiles(); // Scan the directory
+                    playlistsConfig.write(ALL_TRACKS_PLAYLIST_NAME, allFiles); // Save the full list to JSON
+                    playlistTracks = allFiles; // Use this new list for sorting
+                } else {
+                    // If any other playlist doesn't exist, just return an empty list.
+                    return new ArrayList<>();
+                }
+            }
+
+            // Now, apply the requested sorting to the list that was loaded from the JSON
+            if ("A-Z".equals(sortOrder)) {
+                playlistTracks.sort((t1, t2) -> {
+                    boolean t1IsDigit = Character.isDigit(t1.title().charAt(0));
+                    boolean t2IsDigit = Character.isDigit(t2.title().charAt(0));
+
+                    if (t1IsDigit && !t2IsDigit) {
+                        return 1; // Numbers come after letters
+                    } else if (!t1IsDigit && t2IsDigit) {
+                        return -1; // Letters come before numbers
+                    } else {
+                        // Both are letters or both are numbers, sort alphabetically
+                        return t1.title().compareToIgnoreCase(t2.title());
+                    }
+                });
+            } else if ("Date".equals(sortOrder)) {
+                playlistTracks.sort(Comparator.comparingLong((Track t) -> {
+                    DocumentFile file = DocumentFile.fromSingleUri(context, t.uri());
+                    return file != null ? file.lastModified() : 0;
+                }).reversed());
+            }
+
+            return playlistTracks;
+
         } catch (RuntimeException e) {
             Toast.makeText(context, "Error reading playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
             Log.e("FileManager", "Error reading playlist", e);

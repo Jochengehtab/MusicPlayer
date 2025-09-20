@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
+    private String currentSortOrder = "A-Z"; // Default sort order
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton searchIcon = findViewById(R.id.search_icon);
         searchView = findViewById(R.id.track_search_view);
+        ImageButton sortButton = findViewById(R.id.sort_button);
 
         // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
         playbackListener = new OnPlaybackStateListener() {
@@ -184,6 +187,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        sortButton.setOnClickListener(this::showSortMenu);
+
         searchView.setOnCloseListener(() -> {
             searchView.setQuery("", false);
             searchView.startAnimation(slideUp);
@@ -205,11 +210,31 @@ public class MainActivity extends AppCompatActivity {
 
         if (fileManager != null) {
             String lastPlaylistName = fileManager.getCurrentPlaylistName();
-                loadAndShowPlaylist(lastPlaylistName);
-                bottomOptions.setPlaylistName(lastPlaylistName);
+            loadAndShowPlaylist(lastPlaylistName);
+            bottomOptions.setPlaylistName(lastPlaylistName);
 
         }
     }
+
+    private void showSortMenu(View v) {
+        PopupMenu popup = new PopupMenu(this, v);
+        popup.getMenuInflater().inflate(R.menu.sort_menu, popup.getMenu());
+        popup.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.sort_a_z) {
+                currentSortOrder = "A-Z";
+                loadAndShowPlaylist(fileManager.getCurrentPlaylistName());
+                return true;
+            } else if (itemId == R.id.sort_date) {
+                currentSortOrder = "Date";
+                loadAndShowPlaylist(fileManager.getCurrentPlaylistName());
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
 
     private void filterTracks(String query) {
         List<Track> filteredTracks = allTracks.stream()
@@ -228,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
         musicUtility.stopAndCancel();
 
         List<Track> playlistTracks;
-        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
+        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName, currentSortOrder);
 
         allTracks = new ArrayList<>(playlistTracks);
         adapter.updateList(allTracks);
@@ -281,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
     private void loadPlaylistAndPlay(String playlistName) {
         List<Track> playlistTracks;
 
-        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName);
+        playlistTracks = fileManager.loadTracksFromPlaylist(playlistName, currentSortOrder);
 
         allTracks = new ArrayList<>(playlistTracks);
         adapter.updateList(allTracks);
