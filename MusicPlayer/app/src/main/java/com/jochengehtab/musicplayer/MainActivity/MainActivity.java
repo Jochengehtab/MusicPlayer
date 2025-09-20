@@ -1,8 +1,12 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -58,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
     private List<Track> allTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
     private String currentSortOrder = "A-Z"; // Default sort order
+
+    private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
+    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -214,6 +221,8 @@ public class MainActivity extends AppCompatActivity {
             bottomOptions.setPlaylistName(lastPlaylistName);
 
         }
+
+        registerReceiver(noisyReceiver, intentFilter);
     }
 
     private void showSortMenu(View v) {
@@ -279,6 +288,20 @@ public class MainActivity extends AppCompatActivity {
 
         // After any action, update the icon to reflect the new state.
         updatePlayButtonIcon();
+    }
+
+    private class BecomingNoisyReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Check if the broadcast is for audio becoming noisy
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                // If music is playing, pause it
+                if (musicUtility.isPlaying()) {
+                    musicUtility.pause();
+                    updatePlayButtonIcon(); // Update the UI to show the play icon
+                }
+            }
+        }
     }
 
     /**
@@ -360,5 +383,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         musicUtility.stopAndCancel();
+        unregisterReceiver(noisyReceiver);
     }
 }
