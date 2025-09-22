@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private MusicUtility musicUtility;
     private SharedPreferences prefs;
     private ActivityResultLauncher<Uri> pickDirectoryLauncher;
-    private TrackAdapter adapter;
+    private TrackAdapter trackAdapter;
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private SearchView searchView;
@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        adapter = new TrackAdapter(
+        trackAdapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
 
@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
-        musicList.setAdapter(adapter);
+        musicList.setAdapter(trackAdapter);
 
         // If we already had a folder, initialize JSON/FileManager and load
         if (musicDirectoryUri != null) {
@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Please choose a music folder.", Toast.LENGTH_SHORT).show();
         }
 
-        adapter.setFileManager(fileManager);
+        trackAdapter.setFileManager(fileManager);
 
         BottomOptions bottomOptions = new BottomOptions(this, musicUtility, fileManager);
         playlistDialog = new PlaylistDialog(fileManager, this, bottomOptions, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         List<Track> filteredTracks = allTracks.stream()
                 .filter(track -> track.title().toLowerCase().contains(query.toLowerCase()))
                 .collect(Collectors.toList());
-        adapter.updateList(filteredTracks);
+        trackAdapter.updateList(filteredTracks);
     }
 
     /**
@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
         playlistTracks = fileManager.loadTracksFromPlaylist(playlistName, currentSortOrder);
 
         allTracks = new ArrayList<>(playlistTracks);
-        adapter.updateList(allTracks);
+        trackAdapter.updateList(allTracks);
 
         bottomTitle.setText(R.string.no_track_selected);
 
@@ -332,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
         playlistTracks = fileManager.loadTracksFromPlaylist(playlistName, currentSortOrder);
 
         allTracks = new ArrayList<>(playlistTracks);
-        adapter.updateList(allTracks);
+        trackAdapter.updateList(allTracks);
 
         // Now, start playing the loaded list.
         if (!playlistTracks.isEmpty()) {
@@ -363,7 +363,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                             fileManager = new FileManager(musicDirectoryUri, MainActivity.this, allTracks);
-                            adapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
+                            trackAdapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
                         } catch (Exception e) {
                             Log.e("MainActivity", "Failed to initialize on folder pick", e);
                             Toast.makeText(this, "Error setting up storage: " + e.getMessage(), Toast.LENGTH_LONG).show();

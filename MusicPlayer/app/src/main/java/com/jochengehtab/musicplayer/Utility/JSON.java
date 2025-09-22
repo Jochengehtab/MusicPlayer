@@ -211,4 +211,20 @@ public class JSON {
             throw new RuntimeException("Failed to read keys from config file: " + configFile.getName(), e);
         }
     }
+
+    /**
+     * Checks if a top-level key exists in the JSON file.
+     *
+     * @param key The key to check for.
+     * @return true if the key exists, false otherwise.
+     */
+    public boolean exists(String key) {
+        try {
+            // readAsMap() returns all top-level keys.
+            // We can then use the standard Map.containsKey() method.
+            return readAsMap().containsKey(key);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read from config file: " + configFile.getName(), e);
+        }
+    }
 }
