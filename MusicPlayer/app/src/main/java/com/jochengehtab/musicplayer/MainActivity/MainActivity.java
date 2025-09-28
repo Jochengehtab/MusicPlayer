@@ -36,6 +36,7 @@ import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 import com.jochengehtab.musicplayer.Utility.PermissionUtility;
+import com.jochengehtab.musicplayer.Utility.SortingOrder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private OnPlaybackStateListener playbackListener;
     private List<Track> allTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
-    private String currentSortOrder = "A-Z"; // Default sort order
+    private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
 
     private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -231,11 +232,11 @@ public class MainActivity extends AppCompatActivity {
         popup.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.sort_a_z) {
-                currentSortOrder = "A-Z";
+                currentSortOrder = SortingOrder.A_TO_Z;
                 loadAndShowPlaylist(fileManager.getCurrentPlaylistName());
                 return true;
             } else if (itemId == R.id.sort_date) {
-                currentSortOrder = "Date";
+                currentSortOrder = SortingOrder.MOST_RECENT;
                 loadAndShowPlaylist(fileManager.getCurrentPlaylistName());
                 return true;
             }

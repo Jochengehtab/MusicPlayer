@@ -150,7 +150,7 @@ public class FileManager {
      * @param sortOrder    The sorting order to apply ("A-Z" or "Date").
      * @return A list of tracks from the playlist, sorted as requested.
      */
-    public List<Track> loadTracksFromPlaylist(String playlistName, String sortOrder) {
+    public List<Track> loadTracksFromPlaylist(String playlistName, SortingOrder sortOrder) {
 
         assert playlistName != null;
 
@@ -164,7 +164,7 @@ public class FileManager {
         }
 
         // Now, apply the requested sorting to the list that was loaded from the JSON
-        if ("A-Z".equals(sortOrder)) {
+        if (SortingOrder.A_TO_Z == sortOrder) {
             playlistTracks.sort((t1, t2) -> {
                 boolean t1IsDigit = Character.isDigit(t1.title().charAt(0));
                 boolean t2IsDigit = Character.isDigit(t2.title().charAt(0));
@@ -178,7 +178,7 @@ public class FileManager {
                     return t1.title().compareToIgnoreCase(t2.title());
                 }
             });
-        } else if ("Date".equals(sortOrder)) {
+        } else if (SortingOrder.MOST_RECENT == sortOrder) {
             playlistTracks.sort(Comparator.comparingLong((Track t) -> {
                 DocumentFile file = DocumentFile.fromSingleUri(context, t.uri());
                 return file != null ? file.lastModified() : 0;
