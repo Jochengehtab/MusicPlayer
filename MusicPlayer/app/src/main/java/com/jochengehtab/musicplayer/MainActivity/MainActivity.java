@@ -9,12 +9,15 @@ import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,6 +36,7 @@ import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
 import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
+import com.jochengehtab.musicplayer.Utility.DirectoryStats;
 import com.jochengehtab.musicplayer.Utility.FileManager;
 import com.jochengehtab.musicplayer.Utility.JSON;
 import com.jochengehtab.musicplayer.Utility.PermissionUtility;
@@ -41,12 +45,19 @@ import com.jochengehtab.musicplayer.Utility.SortingOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "music_prefs";
     public static final String KEY_TREE_URI = "tree_uri";
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
+
+    // Keys for storing directory stats
+    public static final String KEY_TRACK_COUNT = "track_count";
+    public static final String KEY_TOTAL_SIZE = "total_size";
+
     public static JSON timestampsConfig;
     private final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
@@ -63,6 +74,11 @@ public class MainActivity extends AppCompatActivity {
     private List<Track> allTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
     private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
+
+    // UI element and executor for the update task
+    private ProgressBar updateProgressBar;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -85,12 +101,13 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton chooseButton = findViewById(R.id.choose);
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
+        updateProgressBar = findViewById(R.id.update_progress_bar);
 
         ImageButton searchIcon = findViewById(R.id.search_icon);
         searchView = findViewById(R.id.track_search_view);
         ImageButton sortButton = findViewById(R.id.sort_button);
 
-        // This listener ensures the icon is correct when playback stops naturally (e.g., song ends)
+        // This listener ensures the icon is correct when playback stops naturally
         playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
@@ -129,6 +146,8 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     timestampsConfig = new JSON(this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                     fileManager = new FileManager(musicDirectoryUri, this, allTracks);
+                    // After FileManager is ready, check for updates
+                    checkForMusicDirectoryChanges();
                 } catch (Exception e) {
                     Log.e("MainActivity", "Failed to initialize FileManager or JSON config", e);
                     Toast.makeText(this, "Error initializing storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -224,6 +243,45 @@ public class MainActivity extends AppCompatActivity {
         }
 
         registerReceiver(noisyReceiver, intentFilter);
+    }
+
+    /**
+     * Checks for changes in the music directory and updates the "All Tracks" playlist if necessary.
+     */
+    private void checkForMusicDirectoryChanges() {
+        if (fileManager == null) return;
+
+        // Get previously stored stats
+        int lastTrackCount = prefs.getInt(KEY_TRACK_COUNT, -1);
+        long lastTotalSize = prefs.getLong(KEY_TOTAL_SIZE, -1);
+
+        executor.execute(() -> {
+            // Get current stats from the directory
+            DirectoryStats currentStats = fileManager.getDirectoryStats();
+
+            // If the stats are different, we need to update
+            if (currentStats.fileCount() != lastTrackCount || currentStats.totalSize() != lastTotalSize) {
+                // Show progress bar on the UI thread
+                handler.post(() -> updateProgressBar.setVisibility(View.VISIBLE));
+
+                // Perform the heavy lifting of rescanning and saving
+                fileManager.rescanAndSaveAllTracksPlaylist();
+
+                // Save the new stats to SharedPreferences
+                prefs.edit()
+                        .putInt(KEY_TRACK_COUNT, currentStats.fileCount())
+                        .putLong(KEY_TOTAL_SIZE, currentStats.totalSize())
+                        .apply();
+
+                // After updating, hide the progress bar and reload the view on the UI thread
+                handler.post(() -> {
+                    updateProgressBar.setVisibility(View.GONE);
+                    Toast.makeText(this, "Music library updated.", Toast.LENGTH_SHORT).show();
+                    // Reload the current playlist to reflect the changes
+                    loadAndShowPlaylist(fileManager.getCurrentPlaylistName());
+                });
+            }
+        });
     }
 
     private void showSortMenu(View v) {
@@ -365,6 +423,8 @@ public class MainActivity extends AppCompatActivity {
                             timestampsConfig = new JSON(MainActivity.this, PREFS_NAME, KEY_TREE_URI, "timestamps.json");
                             fileManager = new FileManager(musicDirectoryUri, MainActivity.this, allTracks);
                             trackAdapter.setFileManager(fileManager); // Make sure adapter gets the new file manager
+                            // After a new folder is picked, force a scan and update
+                            forceFullLibraryRescan();
                         } catch (Exception e) {
                             Log.e("MainActivity", "Failed to initialize on folder pick", e);
                             Toast.makeText(this, "Error setting up storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -378,6 +438,32 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
         );
+    }
+
+    /**
+     * Forces a full rescan of the music library. Useful after selecting a new folder.
+     */
+    private void forceFullLibraryRescan() {
+        if (fileManager == null) {
+            return;
+        }
+
+        updateProgressBar.setVisibility(View.VISIBLE);
+        executor.execute(() -> {
+            fileManager.rescanAndSaveAllTracksPlaylist();
+            DirectoryStats currentStats = fileManager.getDirectoryStats();
+
+            prefs.edit()
+                    .putInt(KEY_TRACK_COUNT, currentStats.fileCount())
+                    .putLong(KEY_TOTAL_SIZE, currentStats.totalSize())
+                    .apply();
+
+            handler.post(() -> {
+                updateProgressBar.setVisibility(View.GONE);
+                Toast.makeText(this, "Music library initialized.", Toast.LENGTH_SHORT).show();
+                loadAndShowPlaylist(ALL_TRACKS_PLAYLIST_NAME);
+            });
+        });
     }
 
     @Override

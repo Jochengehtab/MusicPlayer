@@ -52,6 +52,48 @@ public class FileManager {
         }
     }
 
+    /**
+     * Scans the music directory to get the current number of music files and their total size.
+     *
+     * @return A DirectoryStats object with the current stats.
+     */
+    public DirectoryStats getDirectoryStats() {
+        int fileCount = 0;
+        long totalSize = 0;
+
+        if (musicDirectoryUri == null) {
+            return new DirectoryStats(0, 0);
+        }
+
+        DocumentFile pickedDir = DocumentFile.fromTreeUri(context, musicDirectoryUri);
+        if (pickedDir == null || !pickedDir.isDirectory()) {
+            return new DirectoryStats(0, 0);
+        }
+
+        for (DocumentFile file : pickedDir.listFiles()) {
+            if (file.isFile()) {
+                String name = file.getName();
+                if (name != null && (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".m4a"))) {
+                    fileCount++;
+                    totalSize += file.length();
+                }
+            }
+        }
+        return new DirectoryStats(fileCount, totalSize);
+    }
+
+    /**
+     * Rescans the music directory and overwrites the "All Tracks" playlist with the new file list.
+     */
+    public void rescanAndSaveAllTracksPlaylist() {
+        try {
+            List<Track> freshTracks = loadMusicFiles();
+            playlistsConfig.write(ALL_TRACKS_PLAYLIST_NAME, freshTracks);
+        } catch (RuntimeException e) {
+            Log.e("FileManager", "Error rescanning and saving 'All Tracks' playlist", e);
+        }
+    }
+
     public static String getUriHash(Uri uri) {
         return uri.toString();
     }
