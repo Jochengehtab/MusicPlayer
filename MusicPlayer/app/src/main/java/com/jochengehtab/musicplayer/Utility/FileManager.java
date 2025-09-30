@@ -295,4 +295,16 @@ public class FileManager {
         assert name != null;
         playlistsConfig.write("current_playlist", name);
     }
+
+    public void removeFromPlaylist(String playlistName, Track track) {
+        try {
+            playlistsConfig.remove(playlistName, track);
+
+            Toast.makeText(context, "Removed '" + track.title(), Toast.LENGTH_SHORT).show();
+
+        } catch (RuntimeException e) {
+            Log.e("PlaylistError", "Error removing the item." + track.title(), e);
+            Toast.makeText(context, "Error removing: " + track.title(), Toast.LENGTH_LONG).show();
+        }
+    }
 }

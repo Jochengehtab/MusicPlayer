@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Options.Rename;
 import com.jochengehtab.musicplayer.MusicList.Options.Reset;
@@ -66,6 +67,14 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             PopupMenu popup = new PopupMenu(context, holder.overflowIcon);
             popup.inflate(R.menu.track_item_menu);
 
+            String currentPlaylist = (fileManager != null) ? fileManager.getCurrentPlaylistName() : null;
+
+            // Hide the "remove" option if we are not in a specific playlist
+            // or if the playlist is the main "All Tracks" list.
+            if (currentPlaylist == null || currentPlaylist.equals(MainActivity.ALL_TRACKS_PLAYLIST_NAME)) {
+                popup.getMenu().findItem(R.id.action_remove).setVisible(false);
+            }
+
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_add_to_playlist) {
@@ -84,6 +93,19 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                     return true;
                 } else if (id == R.id.action_reset) {
                     reset.reset(current);
+                } else if (id == R.id.action_remove) {
+                    // We already fetched the currentPlaylist name above
+                    if (fileManager != null && currentPlaylist != null) {
+                        fileManager.removeFromPlaylist(currentPlaylist, current);
+
+                        // Update the UI instantly
+                        int currentPosition = holder.getAdapterPosition();
+                        if (currentPosition != RecyclerView.NO_POSITION) {
+                            tracks.remove(currentPosition);
+                            notifyItemRemoved(currentPosition);
+                        }
+                    }
+                    return true;
                 }
                 return false;
             });

@@ -14,4 +14,8 @@
     <item
         android:id="@+id/action_reset"
         android:title="@string/reset" />
+
+    <item
+        android:id="@+id/action_remove"
+        android:title="@string/remove" />
 </menu>

@@ -161,6 +161,31 @@ public class JSON {
     }
 
     /**
+     * Removes an item from a list (JSON array) in the JSON file.
+     *
+     * @param key          The key of the list.
+     * @param itemToRemove The item to be removed from the list.
+     * @param <E>          The type of elements in the list.
+     */
+    public <E> void remove(String key, E itemToRemove) {
+        // It's safe to cast here because we're getting the class from an instance of E.
+        @SuppressWarnings("unchecked")
+        Class<E> elementClass = (Class<E>) itemToRemove.getClass();
+
+        List<E> currentList = readList(key, elementClass);
+
+        if (currentList != null) {
+            // The remove method returns true if an element was removed.
+            boolean wasModified = currentList.remove(itemToRemove);
+
+            // Only rewrite the file if the list was actually changed.
+            if (wasModified) {
+                write(key, currentList);
+            }
+        }
+    }
+
+    /**
      * Reads an array from the JSON file.
      */
     public <T> T[] readArray(String key, Class<T[]> arrayClass) {
