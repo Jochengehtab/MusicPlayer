@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.Music;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
-
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.net.Uri;
