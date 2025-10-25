@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
 import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.R;
@@ -48,7 +49,6 @@ public class PlaylistDialog {
         this.loadPlaylistAndPlay = loadPlaylistAndPlay;
         this.loadAndShowPlaylist = loadAndShowPlaylist;
 
-        // Inflate the main dialog view
         View playlistDialogView = LayoutInflater.from(context).inflate(R.layout.dialog_playlist_selector, null);
         this.playlistRv = playlistDialogView.findViewById(R.id.playlist_list);
         this.progressBar = playlistDialogView.findViewById(R.id.playlist_progress_bar);
@@ -59,16 +59,14 @@ public class PlaylistDialog {
                 .setView(playlistDialogView)
                 .create();
 
-        // Build the "Create Playlist" dialog
         this.createPlaylistInput = new EditText(context);
         this.createPlaylistDialog = new AlertDialog.Builder(context)
                 .setTitle("Enter Playlist Name")
                 .setView(this.createPlaylistInput)
-                .setPositiveButton("Create", null) // Set listener below to prevent auto-dismiss
+                .setPositiveButton("Create", null)
                 .setNegativeButton("Cancel", (d, which) -> showPlaylistDialog())
                 .create();
 
-        // Custom listener for the "Create" button
         createPlaylistDialog.setOnShowListener(dialog -> {
             Button positiveButton = createPlaylistDialog.getButton(AlertDialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(view -> {
@@ -90,20 +88,24 @@ public class PlaylistDialog {
             return;
         }
 
+        // Prevent creating a playlist with the reserved name
+        if (name.equalsIgnoreCase(MainActivity.ALL_TRACKS_PLAYLIST_NAME)) {
+            Toast.makeText(context, "'All Tracks' is a reserved name.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         executor.execute(() -> {
-            // Check if a playlist with this name already exists
             Playlist existing = database.playlistDao().getPlaylistByName(name);
             if (existing != null) {
                 handler.post(() -> Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show());
                 return;
             }
 
-            // If not, create it
             database.playlistDao().insertPlaylist(new Playlist(name));
             handler.post(() -> {
                 Toast.makeText(context, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
                 createPlaylistDialog.dismiss();
-                showPlaylistDialog(); // Refresh the list
+                showPlaylistDialog();
             });
         });
     }
@@ -114,8 +116,12 @@ public class PlaylistDialog {
         playlistDialog.show();
 
         executor.execute(() -> {
-            // Fetch playlist names from the database
+            // Step 1: Fetch the REAL playlists from the database
             List<String> playlists = database.playlistDao().getAllPlaylistNames();
+
+            // Step 2: Manually add our special "All Tracks" playlist to the top of the list
+            // This ensures it's always present and displayed first.
+            playlists.add(0, MainActivity.ALL_TRACKS_PLAYLIST_NAME);
 
             handler.post(() -> {
                 progressBar.setVisibility(View.GONE);
@@ -132,7 +138,6 @@ public class PlaylistDialog {
                     @Override
                     public void onSelectClicked(String playlistName) {
                         playlistDialog.dismiss();
-                        // Let MainActivity handle the state change
                         loadAndShowPlaylist.accept(playlistName);
                     }
 
@@ -141,9 +146,7 @@ public class PlaylistDialog {
                         new AlertDialog.Builder(context)
                                 .setTitle("Delete Playlist")
                                 .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
-                                .setPositiveButton("Delete", (d, which) -> {
-                                    deletePlaylist(playlistName);
-                                })
+                                .setPositiveButton("Delete", (d, which) -> deletePlaylist(playlistName))
                                 .setNegativeButton("Cancel", null)
                                 .show();
                     }
@@ -159,7 +162,7 @@ public class PlaylistDialog {
             handler.post(() -> {
                 Toast.makeText(context, "Playlist '" + playlistName + "' deleted.", Toast.LENGTH_SHORT).show();
                 playlistDialog.dismiss();
-                showPlaylistDialog(); // Refresh the list
+                showPlaylistDialog();
             });
         });
     }
