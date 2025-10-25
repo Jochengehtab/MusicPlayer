@@ -35,7 +35,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Context context;
     private final OnItemClickListener listener;
     private final List<Track> tracks = new ArrayList<>();
-    private final MusicUtility musicUtility; // Keep for Trim/other options
     private final AppDatabase database;
     private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
 
@@ -57,7 +56,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     ) {
         this.context = context;
         this.listener = listener;
-        this.musicUtility = musicUtility;
         this.database = database;
         this.tracks.addAll(initialTracks);
 
