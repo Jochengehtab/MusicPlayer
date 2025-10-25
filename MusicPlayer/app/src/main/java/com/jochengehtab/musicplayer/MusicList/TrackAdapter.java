@@ -61,11 +61,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.database = database;
         this.tracks.addAll(initialTracks);
 
-        // These may need to be updated if they modify file metadata,
-        // to also update the database record.
-        this.trim = new Trim(context, musicUtility);
-        this.rename = new Rename(context);
-        this.reset = new Reset();
+        this.trim = new Trim(context, musicUtility, database);
+        this.rename = new Rename(context, database);
+        this.reset = new Reset(context, database);
     }
 
     @NonNull

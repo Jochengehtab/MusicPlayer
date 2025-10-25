@@ -9,7 +9,6 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -45,7 +44,6 @@ import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.data.Track;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -62,9 +60,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView bottomTitle;
     private ImageButton bottomPlay;
     private SearchView searchView;
-    private OnPlaybackStateListener playbackListener;
     private List<Track> currentlyDisplayedTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
+    private BottomOptions bottomOptions;
     private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
 
@@ -84,20 +82,16 @@ public class MainActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
         setContentView(R.layout.activity_main);
 
-        // Initialize Room Database
         database = AppDatabase.getDatabase(this);
-
         musicUtility = new MusicUtility(this, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         RecyclerView musicList = findViewById(R.id.musicList);
         bottomPlay = findViewById(R.id.bottom_play);
         bottomTitle = findViewById(R.id.bottom_title);
         updateProgressBar = findViewById(R.id.update_progress_bar);
-        ImageButton searchIcon = findViewById(R.id.search_icon);
         searchView = findViewById(R.id.track_search_view);
-        ImageButton sortButton = findViewById(R.id.sort_button);
 
-        playbackListener = new OnPlaybackStateListener() {
+        OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
                 runOnUiThread(MainActivity.this::updatePlayButtonIcon);
@@ -109,46 +103,42 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-
-
         trackAdapter = new TrackAdapter(
                 this,
                 new ArrayList<>(),
                 track -> {
+                    // Correctly call the new play method with the Track object
                     musicUtility.stopAndCancel();
                     bottomTitle.setText(track.title);
                     bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                    musicUtility.play(Uri.parse(track.uri), playbackListener);
+                    musicUtility.play(track, playbackListener);
                 },
                 musicUtility,
-                database // Pass database instance to adapter
+                database
         );
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
         musicList.setAdapter(trackAdapter);
 
-        // Check for permissions and load music
         if (hasPermissions()) {
             scanAndLoadMusic();
         } else {
             requestPermissions();
         }
 
-        // Setup UI components
         setupUI();
         registerReceiver(noisyReceiver, intentFilter);
     }
 
     private void setupUI() {
-        // Note: BottomOptions and PlaylistDialog will need to be updated to use the database
-        // instead of the old FileManager. This is a placeholder for that logic.
-        // BottomOptions bottomOptions = new BottomOptions(this, musicUtility, database);
-        // playlistDialog = new PlaylistDialog(database, this, bottomOptions, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
+        // Initialize the now-corrected helper classes
+        bottomOptions = new BottomOptions(this, musicUtility, database);
+        playlistDialog = new PlaylistDialog(this, database, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
 
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
-        // bottomOptions.handleBottomOptions(bottomOptionsButton, playbackListener, bottomPlay, bottomTitle);
+        bottomOptions.handleBottomOptions(bottomOptionsButton, bottomPlay, bottomTitle);
 
         final Animation slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in);
         final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
@@ -159,9 +149,11 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onAnimationRepeat(Animation animation) {}
         });
 
+        // Attach listeners to the UI buttons
         ImageButton burgerMenu = findViewById(R.id.burger_menu);
-        // burgerMenu.setOnClickListener(v -> playlistDialog.showPlaylistDialog());
+        burgerMenu.setOnClickListener(v -> playlistDialog.showPlaylistDialog());
 
+        ImageButton searchIcon = findViewById(R.id.search_icon);
         searchIcon.setOnClickListener(v -> {
             if (searchView.getVisibility() == View.GONE) {
                 searchView.setVisibility(View.VISIBLE);
@@ -190,16 +182,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Scans MediaStore for all audio files and updates the "All Tracks" playlist in the database.
-     */
     private void scanAndLoadMusic() {
         updateProgressBar.setVisibility(View.VISIBLE);
         executor.execute(() -> {
-            // Step 1: Query MediaStore for all music files
             List<Track> mediaStoreTracks = new ArrayList<>();
             String[] projection = {
-                    MediaStore.Audio.Media.DATA, // The URI
+                    MediaStore.Audio.Media.DATA,
                     MediaStore.Audio.Media.TITLE,
                     MediaStore.Audio.Media.ARTIST,
                     MediaStore.Audio.Media.ALBUM,
@@ -212,21 +200,14 @@ public class MainActivity extends AppCompatActivity {
                     projection, selection, null, null)) {
 
                 if (cursor != null) {
-                    int uriColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-                    int titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
-                    int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-                    int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
-                    int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
-                    int dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED);
-
                     while (cursor.moveToNext()) {
                         mediaStoreTracks.add(new Track(
-                                cursor.getString(uriColumn),
-                                cursor.getString(titleColumn),
-                                cursor.getString(artistColumn),
-                                cursor.getString(albumColumn),
-                                cursor.getLong(durationColumn),
-                                cursor.getLong(dateModifiedColumn)
+                                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)),
+                                cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)),
+                                cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED))
                         ));
                     }
                 }
@@ -234,15 +215,12 @@ public class MainActivity extends AppCompatActivity {
                 Log.e("MainActivity", "Error scanning MediaStore", e);
             }
 
-            // Step 2: Insert all scanned tracks into the database.
-            // onConflict = REPLACE ensures that track details are updated if they change.
             database.trackDao().insertAll(mediaStoreTracks);
 
-            // Step 3: Load the default playlist to the UI
             handler.post(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 Toast.makeText(this, "Library Loaded.", Toast.LENGTH_SHORT).show();
-                loadAndShowPlaylist(currentPlaylistName); // Load the default or last-viewed playlist
+                loadAndShowPlaylist(currentPlaylistName);
             });
         });
     }
@@ -257,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.sort_date) {
                 currentSortOrder = SortingOrder.MOST_RECENT;
             }
-            loadAndShowPlaylist(currentPlaylistName); // Reload with new sort order
+            loadAndShowPlaylist(currentPlaylistName);
             return true;
         });
         popup.show();
@@ -274,12 +252,13 @@ public class MainActivity extends AppCompatActivity {
         trackAdapter.updateList(filteredTracks);
     }
 
-    /**
-     * Loads a playlist's tracks from the database and updates the RecyclerView.
-     */
     private void loadAndShowPlaylist(String playlistName) {
         musicUtility.stopAndCancel();
         currentPlaylistName = playlistName;
+
+        // Update the state of helper classes that need to know the current playlist
+        bottomOptions.setPlaylistName(playlistName);
+        trackAdapter.setCurrentPlaylistName(playlistName);
 
         executor.execute(() -> {
             List<Track> playlistTracks;
@@ -290,10 +269,9 @@ public class MainActivity extends AppCompatActivity {
                 playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
             }
 
-            // Apply sorting
             if (currentSortOrder == SortingOrder.A_TO_Z) {
                 playlistTracks.sort((t1, t2) -> t1.title.compareToIgnoreCase(t2.title));
-            } else { // MOST_RECENT
+            } else {
                 playlistTracks.sort((t1, t2) -> Long.compare(t2.dateModified, t1.dateModified));
             }
 
@@ -307,10 +285,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Loads a playlist and starts playback immediately.
-     */
     private void loadPlaylistAndPlay(String playlistName) {
+        currentPlaylistName = playlistName;
+
+        // Update the state of helper classes
+        bottomOptions.setPlaylistName(playlistName);
+        trackAdapter.setCurrentPlaylistName(playlistName);
+
         executor.execute(() -> {
             List<Track> playlistTracks;
             if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
@@ -320,11 +301,10 @@ public class MainActivity extends AppCompatActivity {
                 playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
             }
 
-            // Apply sorting
             if (currentSortOrder == SortingOrder.A_TO_Z) {
-                Collections.sort(playlistTracks, (t1, t2) -> t1.title.compareToIgnoreCase(t2.title));
-            } else { // MOST_RECENT
-                Collections.sort(playlistTracks, (t1, t2) -> Long.compare(t2.dateModified, t1.dateModified));
+                playlistTracks.sort((t1, t2) -> t1.title.compareToIgnoreCase(t2.title));
+            } else {
+                playlistTracks.sort((t1, t2) -> Long.compare(t2.dateModified, t1.dateModified));
             }
 
             currentlyDisplayedTracks = new ArrayList<>(playlistTracks);
@@ -363,8 +343,6 @@ public class MainActivity extends AppCompatActivity {
         bottomTitle.setText(newTitle);
     }
 
-    // --- Permission Handling ---
-
     private boolean hasPermissions() {
         String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 ? Manifest.permission.READ_MEDIA_AUDIO
@@ -390,8 +368,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
-    // --- Lifecycle and Broadcast Receiver ---
 
     private class BecomingNoisyReceiver extends BroadcastReceiver {
         @Override

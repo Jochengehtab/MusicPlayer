@@ -4,6 +4,7 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Update; // Import Update
 
 import java.util.List;
 
@@ -14,4 +15,7 @@ public interface TrackDao {
 
     @Query("SELECT * FROM tracks")
     List<Track> getAllTracks();
+
+    @Update // Add this method
+    void update(Track track);
 }
