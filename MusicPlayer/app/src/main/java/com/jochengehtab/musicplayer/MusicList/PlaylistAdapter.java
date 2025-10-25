@@ -44,7 +44,6 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistViewHolder> {
             PopupMenu popup = new PopupMenu(context, holder.optionsButton);
             popup.inflate(R.menu.playlist_item_menu);
 
-            // Hide the delete option for our special "All Tracks" playlist
             if (playlistName.equals(MainActivity.ALL_TRACKS_PLAYLIST_NAME)) {
                 popup.getMenu().findItem(R.id.action_delete_playlist).setVisible(false);
             }

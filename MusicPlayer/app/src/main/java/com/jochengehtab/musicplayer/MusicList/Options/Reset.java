@@ -1,25 +1,39 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.MusicList.Track;
-import com.jochengehtab.musicplayer.Utility.FileManager;
+import com.jochengehtab.musicplayer.data.AppDatabase;
+import com.jochengehtab.musicplayer.data.Track;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Reset {
+    private final AppDatabase database;
+    private final Context context;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
-    public Reset() {
+    public Reset(Context context, AppDatabase database) {
+        this.context = context;
+        this.database = database;
     }
 
+    /**
+     * Resets the trim times for a track and updates the database.
+     */
     public void reset(Track track) {
-        Integer[] timestamps = timestampsConfig.readArray(
-                FileManager.getUriHash(track.uri()), Integer[].class
-        );
+        // Reset start and end times to the full duration
+        track.startTime = 0;
+        track.endTime = track.duration;
 
-        assert timestamps.length > 2;
-
-        timestampsConfig.write(
-                FileManager.getUriHash(track.uri()),
-                new int[]{0, timestamps[2], timestamps[2]}
-        );
+        // Update the track in the database on a background thread
+        executor.execute(() -> {
+            database.trackDao().update(track);
+            handler.post(() -> Toast.makeText(context, "Track trim has been reset", Toast.LENGTH_SHORT).show());
+        });
     }
 }

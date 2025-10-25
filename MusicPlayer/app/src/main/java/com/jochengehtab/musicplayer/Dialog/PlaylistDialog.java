@@ -3,7 +3,6 @@ package com.jochengehtab.musicplayer.Dialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -15,11 +14,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.jochengehtab.musicplayer.MainActivity.BottomOptions;
+import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
 import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.R;
-import com.jochengehtab.musicplayer.Utility.FileManager;
+import com.jochengehtab.musicplayer.data.AppDatabase;
+import com.jochengehtab.musicplayer.data.Playlist;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -28,9 +28,8 @@ import java.util.function.Consumer;
 
 public class PlaylistDialog {
 
-    private final FileManager fileManager;
     private final Context context;
-    private final BottomOptions bottomOptions;
+    private final AppDatabase database;
     private final Consumer<String> loadPlaylistAndPlay;
     private final Consumer<String> loadAndShowPlaylist;
 
@@ -44,10 +43,9 @@ public class PlaylistDialog {
     private final RecyclerView playlistRv;
     private final EditText createPlaylistInput;
 
-    public PlaylistDialog(FileManager fileManager, Context context, BottomOptions bottomOptions, Consumer<String> loadPlaylistAndPlay, Consumer<String> loadAndShowPlaylist) {
-        this.fileManager = fileManager;
+    public PlaylistDialog(Context context, AppDatabase database, Consumer<String> loadPlaylistAndPlay, Consumer<String> loadAndShowPlaylist) {
         this.context = context;
-        this.bottomOptions = bottomOptions;
+        this.database = database;
         this.loadPlaylistAndPlay = loadPlaylistAndPlay;
         this.loadAndShowPlaylist = loadAndShowPlaylist;
 
@@ -65,19 +63,17 @@ public class PlaylistDialog {
         this.createPlaylistDialog = new AlertDialog.Builder(context)
                 .setTitle("Enter Playlist Name")
                 .setView(this.createPlaylistInput)
-                .setPositiveButton("Create", (d, which) -> {
-                    String name = createPlaylistInput.getText().toString().trim();
-                    if (!name.isEmpty()) {
-                        if (fileManager.createPlaylist(name)) {
-                            Toast.makeText(context, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
-                            showPlaylistDialog();
-                        }
-                    } else {
-                        Toast.makeText(context, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
-                    }
-                })
+                .setPositiveButton("Create", null)
                 .setNegativeButton("Cancel", (d, which) -> showPlaylistDialog())
                 .create();
+
+        createPlaylistDialog.setOnShowListener(dialog -> {
+            Button positiveButton = createPlaylistDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positiveButton.setOnClickListener(view -> {
+                String name = createPlaylistInput.getText().toString().trim();
+                createPlaylist(name);
+            });
+        });
 
         newPlaylistButton.setOnClickListener(v -> {
             playlistDialog.dismiss();
@@ -86,18 +82,46 @@ public class PlaylistDialog {
         cancelButton.setOnClickListener(v -> playlistDialog.dismiss());
     }
 
-    public void showPlaylistDialog() {
-        if (fileManager == null) {
-            Toast.makeText(context, "Please select a music directory first.", Toast.LENGTH_SHORT).show();
+    private void createPlaylist(String name) {
+        if (name.isEmpty()) {
+            Toast.makeText(context, "Playlist name cannot be empty.", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Prevent creating a playlist with the reserved name
+        if (name.equalsIgnoreCase(MainActivity.ALL_TRACKS_PLAYLIST_NAME)) {
+            Toast.makeText(context, "'All Tracks' is a reserved name.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        executor.execute(() -> {
+            Playlist existing = database.playlistDao().getPlaylistByName(name);
+            if (existing != null) {
+                handler.post(() -> Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show());
+                return;
+            }
+
+            database.playlistDao().insertPlaylist(new Playlist(name));
+            handler.post(() -> {
+                Toast.makeText(context, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
+                createPlaylistDialog.dismiss();
+                showPlaylistDialog();
+            });
+        });
+    }
+
+    public void showPlaylistDialog() {
         progressBar.setVisibility(View.VISIBLE);
         playlistRv.setVisibility(View.GONE);
         playlistDialog.show();
 
         executor.execute(() -> {
-            List<String> playlists = fileManager.listPlaylists();
+            // Step 1: Fetch the REAL playlists from the database
+            List<String> playlists = database.playlistDao().getAllPlaylistNames();
+
+            // Step 2: Manually add our special "All Tracks" playlist to the top of the list
+            // This ensures it's always present and displayed first.
+            playlists.add(0, MainActivity.ALL_TRACKS_PLAYLIST_NAME);
 
             handler.post(() -> {
                 progressBar.setVisibility(View.GONE);
@@ -115,8 +139,6 @@ public class PlaylistDialog {
                     public void onSelectClicked(String playlistName) {
                         playlistDialog.dismiss();
                         loadAndShowPlaylist.accept(playlistName);
-                        bottomOptions.setPlaylistName(playlistName);
-                        fileManager.setCurrentPlaylistName(playlistName);
                     }
 
                     @Override
@@ -124,17 +146,23 @@ public class PlaylistDialog {
                         new AlertDialog.Builder(context)
                                 .setTitle("Delete Playlist")
                                 .setMessage("Are you sure you want to delete the playlist '" + playlistName + "'?")
-                                .setPositiveButton("Delete", (d, which) -> {
-                                    if (fileManager.deletePlaylist(playlistName)) {
-                                        playlistDialog.dismiss();
-                                        showPlaylistDialog();
-                                    }
-                                })
+                                .setPositiveButton("Delete", (d, which) -> deletePlaylist(playlistName))
                                 .setNegativeButton("Cancel", null)
                                 .show();
                     }
                 });
                 playlistRv.setAdapter(playlistAdapter);
+            });
+        });
+    }
+
+    private void deletePlaylist(String playlistName) {
+        executor.execute(() -> {
+            database.playlistDao().deletePlaylistByName(playlistName);
+            handler.post(() -> {
+                Toast.makeText(context, "Playlist '" + playlistName + "' deleted.", Toast.LENGTH_SHORT).show();
+                playlistDialog.dismiss();
+                showPlaylistDialog();
             });
         });
     }

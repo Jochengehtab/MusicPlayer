@@ -1,8 +1,8 @@
 package com.jochengehtab.musicplayer.MusicList.Options;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
-
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -13,23 +13,26 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog.Builder;
 
 import com.jochengehtab.musicplayer.Music.MusicUtility;
-import com.jochengehtab.musicplayer.MusicList.Track;
 import com.jochengehtab.musicplayer.R;
-import com.jochengehtab.musicplayer.Utility.FileManager;
+import com.jochengehtab.musicplayer.data.AppDatabase;
+import com.jochengehtab.musicplayer.data.Track;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Trim {
     private final Context context;
     private final MusicUtility musicUtility;
+    private final AppDatabase database;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
-    public Trim(Context context, MusicUtility musicUtility) {
+    public Trim(Context context, MusicUtility musicUtility, AppDatabase database) {
         this.context = context;
         this.musicUtility = musicUtility;
+        this.database = database;
     }
 
-    /**
-     * Show a Dialog that allows the user to adjust start/end with sliders, preview it,
-     * AND when “OK” is pressed, back up the original file and (placeholder) copy it back over itself.
-     */
     public void showTrimDialog(Track track) {
         Builder builder = new Builder(context);
         builder.setTitle("Trim Track");
@@ -37,114 +40,70 @@ public class Trim {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_trim, null);
         builder.setView(dialogView);
 
-        // Initialize the UI
         SeekBar seekStart = dialogView.findViewById(R.id.seek_start);
         SeekBar seekEnd = dialogView.findViewById(R.id.seek_end);
         TextView valueStart = dialogView.findViewById(R.id.value_start);
         TextView valueEnd = dialogView.findViewById(R.id.value_end);
         Button buttonPreview = dialogView.findViewById(R.id.button_preview);
 
-        Integer[] timestamps = timestampsConfig.readArray(
-                FileManager.getUriHash(track.uri()), Integer[].class
-        );
+        final long durationMs = track.duration;
+        long startMs = track.startTime;
+        long endMs = (track.endTime <= 0 || track.endTime > durationMs) ? durationMs : track.endTime;
 
-        final int durationSec;
-        final int savedStart;
-        final int savedEnd;
-        if (timestamps == null) {
-            final int duration = musicUtility.getTrackDuration(track.uri());
-            timestampsConfig.write(
-                    FileManager.getUriHash(track.uri()),
-                    new int[]{0, duration, duration}
-            );
-            durationSec = duration;
-            savedEnd = duration;
-            savedStart = 0;
-        } else {
-            durationSec = timestamps[2];
-            savedEnd = timestamps[1];
-            savedStart = timestamps[0];
-        }
-
-
-        // Configure sliders to represent seconds directly
-        seekStart.setMax(durationSec);
-        seekEnd.setMax(durationSec);
-        seekStart.setProgress(savedStart);
-        seekEnd.setProgress(savedEnd);
-        valueStart.setText(String.valueOf(savedStart));
-        valueEnd.setText(String.valueOf(savedEnd));
+        seekStart.setMax((int) durationMs);
+        seekEnd.setMax((int) durationMs);
+        seekStart.setProgress((int) startMs);
+        seekEnd.setProgress((int) endMs);
+        valueStart.setText(String.valueOf(startMs / 1000));
+        valueEnd.setText(String.valueOf(endMs / 1000));
 
         seekStart.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onProgressChanged(SeekBar sb, int startSec, boolean fromUser) {
-                int endSec = seekEnd.getProgress();
-                if (startSec >= endSec) {
-                    startSec = Math.max(0, endSec - 1);
-                    sb.setProgress(startSec);
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                if (progress >= seekEnd.getProgress()) {
+                    progress = Math.max(0, seekEnd.getProgress() - 1000);
+                    sb.setProgress(progress);
                 }
-                valueStart.setText(String.valueOf(startSec));
+                valueStart.setText(String.valueOf(progress / 1000));
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar sb) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar sb) {
-            }
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
         });
 
-        // When end thumb moves, clamp so it's always > start
         seekEnd.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onProgressChanged(SeekBar sb, int endSec, boolean fromUser) {
-                int startSec = seekStart.getProgress();
-                if (endSec <= startSec) {
-                    endSec = startSec + 1;
-                    sb.setProgress(endSec);
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                if (progress <= seekStart.getProgress()) {
+                    progress = Math.min((int) durationMs, seekStart.getProgress() + 1000);
+                    sb.setProgress(progress);
                 }
-                valueEnd.setText(String.valueOf(endSec));
+                valueEnd.setText(String.valueOf(progress / 1000));
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar sb) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar sb) {
-            }
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
         });
 
-        // Preview button plays only the selected segment
-        buttonPreview.setOnClickListener(previewView -> {
-            int startSec = seekStart.getProgress();
-            int endSec = seekEnd.getProgress();
-            if (endSec <= startSec) {
-                Toast.makeText(context, "End must be > start", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            musicUtility.play(track.uri(), null, startSec, endSec);
+        buttonPreview.setOnClickListener(v -> {
+            long start = seekStart.getProgress();
+            long end = seekEnd.getProgress();
+            // --- THIS IS THE CORRECTED LINE ---
+            // Pass the entire track object for the preview.
+            // The timespan argument overrides the saved trim times.
+            musicUtility.play(track, null, start, end);
         });
 
-        // OK button: backup original and save new timestamps
         builder.setPositiveButton("OK", (dialog, which) -> {
-            int startSec = seekStart.getProgress();
-            int endSec = seekEnd.getProgress();
+            track.startTime = seekStart.getProgress();
+            track.endTime = seekEnd.getProgress();
 
-            // Only apply if trimmed
-            if (startSec > 0 || endSec < durationSec) {
-                timestampsConfig.write(
-                        FileManager.getUriHash(track.uri()),
-                        new int[]{startSec, endSec, durationSec}
-                );
-            }
+            executor.execute(() -> {
+                database.trackDao().update(track);
+                handler.post(() -> Toast.makeText(context, "Trim saved", Toast.LENGTH_SHORT).show());
+            });
             dialog.dismiss();
         });
 
-        // Cancel button
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-
         builder.create().show();
     }
 }

@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.Music;
 
-import static com.jochengehtab.musicplayer.MainActivity.MainActivity.timestampsConfig;
-
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -9,8 +7,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.MusicList.Track;
-import com.jochengehtab.musicplayer.Utility.FileManager;
+// Import the new Track entity
+import com.jochengehtab.musicplayer.data.Track;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,10 +39,12 @@ public class MusicUtility {
         this.onPlaybackStateListener = new OnPlaybackStateListener() {
             @Override
             public void onPlaybackStarted() {
+                // This can be used for UI updates if needed
             }
 
             @Override
             public void onPlaybackStopped() {
+                // When a track finishes, automatically play the next one in the queue
                 synchronized (MusicUtility.this) {
                     if (cancelToken.get()) {
                         return;
@@ -57,118 +57,79 @@ public class MusicUtility {
     }
 
     /**
-     * Play either the trimmed segment (if timestamps exist) or the full track.
-     * Notifies the single listener when playback starts and when it ends.
+     * Plays a track. If the track has been trimmed, it plays the specified segment.
+     *
+     * @param track    The Track object to play.
+     * @param listener A listener to be notified of playback start/stop events.
+     * @param timespan Optional. An array of [startTimeMs, endTimeMs] to override the track's saved trim times. Used for previewing.
      */
-    public void play(Uri uri, OnPlaybackStateListener listener, int... timespan) {
+    public void play(Track track, OnPlaybackStateListener listener, long... timespan) {
         if (isInitialized()) {
             mediaPlayer.release();
         }
         mediaPlayer = new MediaPlayer();
 
-        int startSeconds;
-        int endSeconds;
+        long startMs;
+        long endMs;
 
-        // Check if start and end times are provided via the timespan parameter
+        // Check if an override timespan is provided (for previewing in Trim dialog)
         if (timespan != null && timespan.length >= 2) {
-            startSeconds = timespan[0];
-            endSeconds = timespan[1];
+            startMs = timespan[0];
+            endMs = timespan[1];
         } else {
-
-            // Try to read existing timestamps
-            Integer[] timestamps = timestampsConfig.readArray(
-                    FileManager.getUriHash(uri), Integer[].class
-            );
-
-            // If timestamps don't exist, this is a new track.
-            // Calculate duration and write default timestamps now.
-            if (timestamps == null) {
-                try {
-                    // This is the expensive call, but now it only happens once per new track.
-                    final int duration = getTrackDuration(uri);
-                    // Create the default timestamp array [start, end, total_duration]
-                    timestamps = new Integer[]{0, duration, duration};
-                    // Write it to the config for all future plays
-                    timestampsConfig.write(FileManager.getUriHash(uri), timestamps);
-                } catch (RuntimeException e) {
-                    Toast.makeText(context, "Error getting track info: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    // Abort playback if we can't get info
-                    if (mediaPlayer != null) {
-                        mediaPlayer.release();
-                        mediaPlayer = null;
-                    }
-                    if (listener != null) {
-                        // Notify UI that nothing is playing
-                        listener.onPlaybackStopped();
-                    }
-                    return;
-                }
-            }
-
-            // Now we are guaranteed to have timestamps.
-            startSeconds = timestamps[0];
-            endSeconds = timestamps[1];
+            // Otherwise, use the start and end times stored in the Track object
+            startMs = track.startTime;
+            endMs = track.endTime;
         }
-        if (startSeconds >= endSeconds) {
-            Toast.makeText(context,
-                    "Start and End time are the same!", Toast.LENGTH_SHORT).show();
-            // Abort playback
-            if (mediaPlayer != null) {
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
-            if (listener != null) {
-                listener.onPlaybackStopped();
-            }
+
+        if (startMs >= endMs) {
+            Toast.makeText(context, "Invalid trim times. Start must be before end.", Toast.LENGTH_SHORT).show();
+            if (listener != null) listener.onPlaybackStopped();
             return;
         }
 
         try {
-            mediaPlayer.setDataSource(context, uri);
-            mediaPlayer.setOnPreparedListener(mediaPlayer -> mediaPlayer.seekTo(startSeconds * 1000));
-            mediaPlayer.setOnSeekCompleteListener(mediaPlayer -> {
-                mediaPlayer.start();
-                // Notify the listener that playback has started
+            mediaPlayer.setDataSource(context, Uri.parse(track.uri));
+            mediaPlayer.setOnPreparedListener(mp -> mp.seekTo((int) startMs));
+            mediaPlayer.setOnSeekCompleteListener(mp -> {
+                mp.start();
                 if (listener != null) {
                     listener.onPlaybackStarted();
                 }
 
-                int durationMs = (endSeconds - startSeconds) * 1000;
+                // Schedule a stop command for when the trimmed segment should end
+                long durationMs = endMs - startMs;
                 handler.postDelayed(() -> {
-                    if (mediaPlayer != this.mediaPlayer) {
-                        return; // This player is stale, do nothing
+                    // Check if this player is still the active one
+                    if (mediaPlayer == mp && mp.isPlaying()) {
+                        mp.pause(); // Use pause instead of stop for smoother transitions
                     }
-
-                    if (this.mediaPlayer.isPlaying()) {
-                        this.mediaPlayer.pause();
-                    }
-
-                    // Notify the listener that playback has stopped
                     if (listener != null) {
                         listener.onPlaybackStopped();
                     }
-
                 }, durationMs);
             });
 
             mediaPlayer.prepareAsync();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            Toast.makeText(context, "Error playing track: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            if (listener != null) listener.onPlaybackStopped();
         }
     }
 
     /**
-     * Plays a given list of tracks in order.
+     * Plays a given list of tracks.
      *
      * @param musicFiles The list of tracks to play.
+     * @param shouldMix  If true, the playlist will be shuffled before playing.
      */
     public synchronized void playList(List<Track> musicFiles, boolean shouldMix) {
         if (musicFiles == null || musicFiles.isEmpty()) {
+            Toast.makeText(context, "Playlist is empty.", Toast.LENGTH_SHORT).show();
             return;
         }
         cancelToken.set(false);
-
-        mixEnabled = true;
+        mixEnabled = shouldMix;
         loopEnabled = false;
 
         playQueue = new ArrayList<>(musicFiles);
@@ -178,54 +139,29 @@ public class MusicUtility {
         }
 
         currentIndex = 0;
-
         playNextInQueue();
     }
-
 
     private synchronized void playNextInQueue() {
         if (cancelToken.get()) {
             updateBottomPlayIcon.run();
             return;
         }
+
         if (currentIndex >= playQueue.size()) {
-            mixEnabled = false;
-            updateBottomPlayIcon.run();
-            if (!loopEnabled) {
-                return;
+            // End of playlist reached
+            if (loopEnabled) {
+                currentIndex = 0; // Loop back to the start
+            } else {
+                mixEnabled = false;
+                updateBottomPlayIcon.run();
+                return; // Stop playback
             }
-            currentIndex = 0;
         }
 
         Track nextTrack = playQueue.get(currentIndex);
-        updateBottomTitle.accept(nextTrack.title());
-        play(nextTrack.uri(), onPlaybackStateListener);
-    }
-
-    public void loopMediaPlayer(OnPlaybackStateListener listener) {
-        if (!isInitialized()) {
-            throw new IllegalStateException("No MediaPlayer is prepared. Call play() first.");
-        }
-
-        // Cancel any pending pause callbacks from play()
-        handler.removeCallbacksAndMessages(null);
-
-        // Remove the old OnSeekCompleteListener so it won't schedule new pauses
-        mediaPlayer.setOnSeekCompleteListener(null);
-
-        // Install our loop‐on‐completion listener so that we reach the end we start over again
-        mediaPlayer.setOnCompletionListener(mp -> {
-            listener.onPlaybackStopped();
-            mp.seekTo(0);
-            mp.start();
-            listener.onPlaybackStarted();
-        });
-
-        // Kick off playback if it isn't already running
-        if (!mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-            listener.onPlaybackStarted();
-        }
+        updateBottomTitle.accept(nextTrack.title);
+        play(nextTrack, onPlaybackStateListener);
     }
 
     public boolean toggleLoop() {
@@ -235,8 +171,11 @@ public class MusicUtility {
 
     public synchronized void stopAndCancel() {
         cancelToken.set(true);
+        handler.removeCallbacksAndMessages(null); // Cancel any pending stop commands
         if (isInitialized()) {
-            mediaPlayer.stop();
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
             mediaPlayer.release();
             mediaPlayer = null;
         }
@@ -249,42 +188,19 @@ public class MusicUtility {
         }
     }
 
-    /**
-     * Resume if paused.
-     */
     public void resume() {
         if (isInitialized() && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
     }
 
-
-    public int getTrackDuration(Uri uri) {
-        try {
-            MediaPlayer mediaPlayer = MediaPlayer.create(context, uri);
-            if (mediaPlayer != null) {
-                int durationMs = mediaPlayer.getDuration();
-                mediaPlayer.release();
-                return (durationMs + 500) / 1000;
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve duration", e);
-        }
-
-        throw new RuntimeException("Found no length for URI: " + uri);
-    }
-
-    public synchronized Track getCurrentTitle() {
+    public synchronized Track getCurrentTrack() {
         if (playQueue.isEmpty() || currentIndex >= playQueue.size()) {
             return null;
         }
         return playQueue.get(currentIndex);
     }
 
-
-    /**
-     * Returns true if the internal MediaPlayer exists and is currently playing.
-     */
     public boolean isPlaying() {
         return isInitialized() && mediaPlayer.isPlaying();
     }

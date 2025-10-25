@@ -3,7 +3,11 @@ package com.jochengehtab.musicplayer.MusicList;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
+// Import the new Track entity
+import com.jochengehtab.musicplayer.data.Track;
+
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Computes the diff between two lists of Track so RecyclerView
@@ -29,23 +33,30 @@ public class TrackDiffCallback extends DiffUtil.Callback {
     }
 
     /**
-     * Two Tracks are considered the same if they point to the same URI.
+     * Two Tracks are considered the same item if they have the same database ID.
+     * This is the most reliable way to check for identity.
      */
     @Override
     public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-        return oldList.get(oldItemPosition).uri()
-                .equals(newList.get(newItemPosition).uri());
+        // Compare the unique database ID
+        return oldList.get(oldItemPosition).id == newList.get(newItemPosition).id;
     }
 
     /**
-     * Contents are the same if title (and uri) are unchanged. If you add more fields
-     * to Track, compare them here too.
+     * If the items are the same, this checks if their contents (the data displayed) have changed.
+     * We now access fields directly (e.g., .title) instead of methods (e.g., .title()).
      */
     @Override
     public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
         Track oldTrack = oldList.get(oldItemPosition);
         Track newTrack = newList.get(newItemPosition);
-        return oldTrack.title().equals(newTrack.title())
-                && oldTrack.uri().equals(newTrack.uri());
+
+        // Compare all relevant fields to see if a re-bind is needed.
+        // Using Objects.equals is safer for strings that might be null.
+        return Objects.equals(oldTrack.title, newTrack.title)
+                && Objects.equals(oldTrack.artist, newTrack.artist)
+                && Objects.equals(oldTrack.album, newTrack.album)
+                && Objects.equals(oldTrack.uri, newTrack.uri)
+                && oldTrack.duration == newTrack.duration;
     }
 }
