@@ -37,4 +37,10 @@ public interface PlaylistDao {
     void removeTrackFromPlaylist(String playlistName, long trackId);
     @Query("DELETE FROM playlists WHERE name = :playlistName")
     void deletePlaylistByName(String playlistName);
+
+    @Query("DELETE FROM PlaylistTrackCrossRef WHERE playlistId = :playlistId")
+    void clearPlaylist(long playlistId);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void addTracksToPlaylist(List<PlaylistTrackCrossRef> crossRefs);
 }

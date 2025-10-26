@@ -40,6 +40,8 @@ import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.SortingOrder;
 import com.jochengehtab.musicplayer.data.AppDatabase;
+import com.jochengehtab.musicplayer.data.Playlist;
+import com.jochengehtab.musicplayer.data.PlaylistTrackCrossRef;
 import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.data.Track;
 
@@ -134,7 +136,6 @@ public class MainActivity extends AppCompatActivity {
         // Initialize the now-corrected helper classes
         bottomOptions = new BottomOptions(this, musicUtility, database);
         playlistDialog = new PlaylistDialog(this, database, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
-
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
@@ -185,6 +186,7 @@ public class MainActivity extends AppCompatActivity {
     private void scanAndLoadMusic() {
         updateProgressBar.setVisibility(View.VISIBLE);
         executor.execute(() -> {
+            // Get a fresh list of tracks from MediaStore
             List<Track> mediaStoreTracks = new ArrayList<>();
             String[] projection = {
                     MediaStore.Audio.Media.DATA,
@@ -198,7 +200,6 @@ public class MainActivity extends AppCompatActivity {
             try (Cursor cursor = getContentResolver().query(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     projection, selection, null, null)) {
-
                 if (cursor != null) {
                     while (cursor.moveToNext()) {
                         mediaStoreTracks.add(new Track(
@@ -215,11 +216,46 @@ public class MainActivity extends AppCompatActivity {
                 Log.e("MainActivity", "Error scanning MediaStore", e);
             }
 
-            database.trackDao().insertAll(mediaStoreTracks);
+            // Get the current number of tracks in our database.
+            int currentDbTrackCount = database.trackDao().getTrackCount();
 
+            // Only sync if the counts are different.
+            boolean syncIsNeeded = (mediaStoreTracks.size() != currentDbTrackCount);
+
+            // This is a special case for the very first run after an install.
+            Playlist allTracksPlaylist = database.playlistDao().getPlaylistByName(ALL_TRACKS_PLAYLIST_NAME);
+            if (allTracksPlaylist == null) {
+                syncIsNeeded = true;
+            }
+
+            if (syncIsNeeded) {
+                handler.post(() -> Toast.makeText(MainActivity.this, "Library has changed, syncing...", Toast.LENGTH_SHORT).show());
+
+                database.trackDao().fullResync(mediaStoreTracks);
+
+                allTracksPlaylist = database.playlistDao().getPlaylistByName(ALL_TRACKS_PLAYLIST_NAME);
+                long allTracksPlaylistId;
+                if (allTracksPlaylist == null) {
+                    allTracksPlaylistId = database.playlistDao().insertPlaylist(new Playlist(ALL_TRACKS_PLAYLIST_NAME));
+                } else {
+                    allTracksPlaylistId = allTracksPlaylist.id;
+                }
+
+                // And re-populate it.
+                List<Track> allTracksFromDb = database.trackDao().getAllTracks();
+                List<PlaylistTrackCrossRef> crossRefs = new ArrayList<>();
+                for (Track track : allTracksFromDb) {
+                    PlaylistTrackCrossRef ref = new PlaylistTrackCrossRef();
+                    ref.playlistId = allTracksPlaylistId;
+                    ref.trackId = track.id;
+                    crossRefs.add(ref);
+                }
+                database.playlistDao().addTracksToPlaylist(crossRefs);
+            }
+
+            // Always load the UI at the end, whether a sync happened or not.
             handler.post(() -> {
                 updateProgressBar.setVisibility(View.GONE);
-                Toast.makeText(this, "Library Loaded.", Toast.LENGTH_SHORT).show();
                 loadAndShowPlaylist(currentPlaylistName);
             });
         });
@@ -252,26 +288,25 @@ public class MainActivity extends AppCompatActivity {
         trackAdapter.updateList(filteredTracks);
     }
 
+    /**
+     * Loads a playlist's tracks from the database.
+     * This method is now SIMPLER because "All Tracks" is no longer a special case.
+     */
     private void loadAndShowPlaylist(String playlistName) {
         musicUtility.stopAndCancel();
         currentPlaylistName = playlistName;
-
-        // Update the state of helper classes that need to know the current playlist
         bottomOptions.setPlaylistName(playlistName);
         trackAdapter.setCurrentPlaylistName(playlistName);
 
         executor.execute(() -> {
-            List<Track> playlistTracks;
-            if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
-                playlistTracks = database.trackDao().getAllTracks();
-            } else {
-                PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
-                playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
-            }
+            // NO MORE "if (playlistName.equals...)" NEEDED!
+            PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
+            List<Track> playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
 
+            // Apply sorting
             if (currentSortOrder == SortingOrder.A_TO_Z) {
                 playlistTracks.sort((t1, t2) -> t1.title.compareToIgnoreCase(t2.title));
-            } else {
+            } else { // MOST_RECENT
                 playlistTracks.sort((t1, t2) -> Long.compare(t2.dateModified, t1.dateModified));
             }
 
@@ -285,6 +320,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     private void loadPlaylistAndPlay(String playlistName) {
         currentPlaylistName = playlistName;
 
@@ -293,13 +329,8 @@ public class MainActivity extends AppCompatActivity {
         trackAdapter.setCurrentPlaylistName(playlistName);
 
         executor.execute(() -> {
-            List<Track> playlistTracks;
-            if (playlistName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
-                playlistTracks = database.trackDao().getAllTracks();
-            } else {
-                PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
-                playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
-            }
+            PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
+            List<Track> playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
 
             if (currentSortOrder == SortingOrder.A_TO_Z) {
                 playlistTracks.sort((t1, t2) -> t1.title.compareToIgnoreCase(t2.title));

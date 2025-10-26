@@ -116,12 +116,7 @@ public class PlaylistDialog {
         playlistDialog.show();
 
         executor.execute(() -> {
-            // Step 1: Fetch the REAL playlists from the database
             List<String> playlists = database.playlistDao().getAllPlaylistNames();
-
-            // Step 2: Manually add our special "All Tracks" playlist to the top of the list
-            // This ensures it's always present and displayed first.
-            playlists.add(0, MainActivity.ALL_TRACKS_PLAYLIST_NAME);
 
             handler.post(() -> {
                 progressBar.setVisibility(View.GONE);
