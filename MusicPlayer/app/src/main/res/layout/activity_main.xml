@@ -6,16 +6,6 @@
     android:fitsSystemWindows="true"
     android:padding="16dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/choose"
-        style="@style/App.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/choose"
-        app:layout_constraintHorizontal_chainStyle="packed"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <!-- Search Icon -->
     <ImageButton
         android:id="@+id/search_icon"
@@ -67,7 +57,7 @@
         android:visibility="gone"
         app:iconifiedByDefault="false"
         app:queryHint="Search Tracks..."
-        app:layout_constraintTop_toBottomOf="@id/choose"
+        app:layout_constraintTop_toBottomOf="@id/search_icon"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -84,7 +74,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/track_search_view" />
 
-    <!-- This is the new ProgressBar -->
     <ProgressBar
         android:id="@+id/update_progress_bar"
         style="?android:attr/progressBarStyle"
