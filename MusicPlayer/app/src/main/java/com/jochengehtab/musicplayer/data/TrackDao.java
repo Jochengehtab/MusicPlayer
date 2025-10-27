@@ -33,7 +33,7 @@ public interface TrackDao {
     void clearAllTracks();
 
     /**
-     * This is the "nuke and pave" transaction. It completely wipes all
+     * This completely wipes all
      * music-related data and replaces it with a fresh list.
      * This is the simplest way to handle additions, deletions, and changes.
      */
