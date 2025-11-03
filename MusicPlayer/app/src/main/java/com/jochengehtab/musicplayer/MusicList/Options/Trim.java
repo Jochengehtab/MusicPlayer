@@ -66,8 +66,14 @@ public class Trim {
                 }
                 valueStart.setText(String.valueOf(progress / 1000));
             }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+            }
         });
 
         seekEnd.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -79,8 +85,14 @@ public class Trim {
                 }
                 valueEnd.setText(String.valueOf(progress / 1000));
             }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+            }
         });
 
         buttonPreview.setOnClickListener(v -> {
