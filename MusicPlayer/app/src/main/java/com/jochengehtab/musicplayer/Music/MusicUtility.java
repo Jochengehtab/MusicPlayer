@@ -10,6 +10,7 @@ import android.widget.Toast;
 // Import the new Track entity
 import com.jochengehtab.musicplayer.data.Track;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -89,7 +90,7 @@ public class MusicUtility {
         }
 
         try {
-            mediaPlayer.setDataSource(context, Uri.parse(track.uri));
+            mediaPlayer.setDataSource(context, Uri.fromFile(new File(track.uri)));
             mediaPlayer.setOnPreparedListener(mp -> mp.seekTo((int) startMs));
             mediaPlayer.setOnSeekCompleteListener(mp -> {
                 mp.start();
