@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList;
 
 // Import the new Track entity from the data package
-
 import com.jochengehtab.musicplayer.data.Track;
 
 /**
@@ -10,7 +9,6 @@ import com.jochengehtab.musicplayer.data.Track;
 public interface OnItemClickListener {
     /**
      * Called when a track in the list is clicked.
-     *
      * @param track The Track entity object that was clicked.
      */
     void onItemClick(Track track);

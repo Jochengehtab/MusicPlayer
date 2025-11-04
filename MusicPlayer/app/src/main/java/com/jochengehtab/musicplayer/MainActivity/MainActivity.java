@@ -56,10 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
     private static final int PERMISSION_REQUEST_CODE = 101;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
-    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
     private MusicUtility musicUtility;
     private TrackAdapter trackAdapter;
     private TextView bottomTitle;
@@ -70,7 +67,14 @@ public class MainActivity extends AppCompatActivity {
     private BottomOptions bottomOptions;
     private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
+
     private ProgressBar updateProgressBar;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
+    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
     private AppDatabase database;
 
     @Override
@@ -141,18 +145,9 @@ public class MainActivity extends AppCompatActivity {
         final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
 
         slideUp.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
-                searchView.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
-            }
+            @Override public void onAnimationStart(Animation animation) {}
+            @Override public void onAnimationEnd(Animation animation) { searchView.setVisibility(View.GONE); }
+            @Override public void onAnimationRepeat(Animation animation) {}
         });
 
         // Attach listeners to the UI buttons
@@ -180,13 +175,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                return false;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
+            @Override public boolean onQueryTextSubmit(String query) { return false; }
+            @Override public boolean onQueryTextChange(String newText) {
                 filterTracks(newText);
                 return true;
             }
@@ -410,14 +400,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        musicUtility.stopAndCancel();
-        unregisterReceiver(noisyReceiver);
-        executor.shutdown();
-    }
-
     private class BecomingNoisyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -428,5 +410,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        musicUtility.stopAndCancel();
+        unregisterReceiver(noisyReceiver);
+        executor.shutdown();
     }
 }

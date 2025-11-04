@@ -25,9 +25,10 @@ public class BottomOptions {
     private final Context context;
     private final MusicUtility musicUtility;
     private final AppDatabase database;
+    private String playListName;
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private String playListName;
 
     public BottomOptions(Context context, MusicUtility musicUtility, AppDatabase database) {
         this.context = context;

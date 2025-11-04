@@ -35,7 +35,6 @@ public interface PlaylistDao {
 
     @Query("DELETE FROM PlaylistTrackCrossRef WHERE playlistId = (SELECT id FROM playlists WHERE name = :playlistName) AND trackId = :trackId")
     void removeTrackFromPlaylist(String playlistName, long trackId);
-
     @Query("DELETE FROM playlists WHERE name = :playlistName")
     void deletePlaylistByName(String playlistName);
 

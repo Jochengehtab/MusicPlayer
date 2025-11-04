@@ -36,14 +36,16 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final OnItemClickListener listener;
     private final List<Track> tracks = new ArrayList<>();
     private final AppDatabase database;
+    private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
+
     // Executor for background database operations
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
+
     // Options (assuming they are updated or still relevant)
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
-    private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
 
     public TrackAdapter(
             Context context,
