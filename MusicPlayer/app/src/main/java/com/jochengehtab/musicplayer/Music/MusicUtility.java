@@ -83,12 +83,6 @@ public class MusicUtility {
             endMs = track.endTime;
         }
 
-        if (startMs >= endMs) {
-            Toast.makeText(context, "Invalid trim times. Start must be before end.", Toast.LENGTH_SHORT).show();
-            if (listener != null) listener.onPlaybackStopped();
-            return;
-        }
-
         try {
             mediaPlayer.setDataSource(context, Uri.fromFile(new File(track.uri)));
             mediaPlayer.setOnPreparedListener(mp -> mp.seekTo((int) startMs));

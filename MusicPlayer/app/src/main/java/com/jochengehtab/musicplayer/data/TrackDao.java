@@ -17,7 +17,7 @@ public interface TrackDao {
     @Query("SELECT * FROM tracks")
     List<Track> getAllTracks();
 
-    @Update // Add this method
+    @Update
     void update(Track track);
 
     @Query("SELECT COUNT(*) FROM tracks")

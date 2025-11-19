@@ -37,12 +37,8 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final List<Track> tracks = new ArrayList<>();
     private final AppDatabase database;
     private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
-
-    // Executor for background database operations
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
-
-    // Options (assuming they are updated or still relevant)
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
@@ -52,7 +48,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             List<Track> initialTracks,
             OnItemClickListener listener,
             MusicUtility musicUtility,
-            AppDatabase database // Pass the database instance
+            AppDatabase database
     ) {
         this.context = context;
         this.listener = listener;

@@ -109,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 new ArrayList<>(),
                 track -> {
-                    // Correctly call the new play method with the Track object
                     musicUtility.stopAndCancel();
                     bottomTitle.setText(track.title);
                     bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
@@ -229,12 +228,14 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (syncIsNeeded) {
-                handler.post(() -> Toast.makeText(MainActivity.this, "Library has changed, syncing...", Toast.LENGTH_SHORT).show());
 
+                // TOOD when this is triggerd then all playlists get wiped
                 database.trackDao().fullResync(mediaStoreTracks);
 
                 allTracksPlaylist = database.playlistDao().getPlaylistByName(ALL_TRACKS_PLAYLIST_NAME);
                 long allTracksPlaylistId;
+
+                // Insert the All Tracks Playlist if it doesn't exist
                 if (allTracksPlaylist == null) {
                     allTracksPlaylistId = database.playlistDao().insertPlaylist(new Playlist(ALL_TRACKS_PLAYLIST_NAME));
                 } else {
