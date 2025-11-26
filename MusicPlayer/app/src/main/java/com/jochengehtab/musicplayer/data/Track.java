@@ -32,4 +32,18 @@ public class Track {
         this.startTime = 0;
         this.endTime = duration;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Track track = (Track) o;
+        // Two tracks are equal if their IDs are equal
+        return id == track.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(id);
+    }
 }

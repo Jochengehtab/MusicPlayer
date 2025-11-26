@@ -3,6 +3,7 @@ package com.jochengehtab.musicplayer.MusicList;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -100,7 +101,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                     reset.reset(current);
                     return true;
                 } else if (id == R.id.action_remove) {
-                    removeTrackFromCurrentPlaylist(current, holder.getAdapterPosition());
+                    removeTrackFromCurrentPlaylist(current);
                     return true;
                 }
                 return false;
@@ -109,16 +110,19 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         });
     }
 
-    private void removeTrackFromCurrentPlaylist(Track track, int position) {
+    private void removeTrackFromCurrentPlaylist(Track track) {
         executor.execute(() -> {
-            // Perform database operation in the background
+            // Remove the track from the playlist in the DB
             database.playlistDao().removeTrackFromPlaylist(currentPlaylistName, track.id);
 
-            // Update UI on the main thread
+            // Update the UI
             handler.post(() -> {
-                if (position != RecyclerView.NO_POSITION) {
-                    tracks.remove(position);
-                    notifyItemRemoved(position);
+                // Find where this track is currently located in the list
+                int currentPos = tracks.indexOf(track);
+
+                if (currentPos != -1) {
+                    tracks.remove(currentPos);
+                    notifyItemRemoved(currentPos);
                     Toast.makeText(context, "Removed from " + currentPlaylistName, Toast.LENGTH_SHORT).show();
                 }
             });
