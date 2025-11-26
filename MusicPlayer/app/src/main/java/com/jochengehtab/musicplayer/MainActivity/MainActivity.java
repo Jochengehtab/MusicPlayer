@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -55,6 +56,8 @@ import java.util.stream.Collectors;
 public class MainActivity extends AppCompatActivity {
 
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
+    private static final String PREFS_NAME = "MusicPlayerPrefs";
+    private static final String KEY_LAST_PLAYLIST = "last_playlist";
     private static final int PERMISSION_REQUEST_CODE = 101;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -116,6 +119,10 @@ public class MainActivity extends AppCompatActivity {
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
         musicList.setAdapter(trackAdapter);
+
+        // Read the last played playlist
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        currentPlaylistName = prefs.getString(KEY_LAST_PLAYLIST, ALL_TRACKS_PLAYLIST_NAME);
 
         if (hasPermissions()) {
             scanAndLoadMusic();
@@ -304,6 +311,10 @@ public class MainActivity extends AppCompatActivity {
         currentPlaylistName = playlistName;
         bottomOptions.setPlaylistName(playlistName);
         trackAdapter.setCurrentPlaylistName(playlistName);
+
+        // Save the current playlist as the last Playlist
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit().putString(KEY_LAST_PLAYLIST, playlistName).apply();
 
         executor.execute(() -> {
             PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
