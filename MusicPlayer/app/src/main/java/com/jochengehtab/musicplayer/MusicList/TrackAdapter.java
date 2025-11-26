@@ -136,6 +136,9 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
             // Fetch playlist names from the database in the background
             List<String> playlistNames = database.playlistDao().getAllPlaylistNames();
 
+            // Remove the ALL_TRACKS_PLAYLIST because it already contains all tracks
+            playlistNames.remove(MainActivity.ALL_TRACKS_PLAYLIST_NAME);
+
             // Switch back to the main thread to show the dialog
             handler.post(() -> {
                 if (playlistNames.isEmpty()) {
