@@ -108,7 +108,7 @@ public class Trim {
             track.endTime = seekEnd.getProgress();
 
             executor.execute(() -> {
-                database.trackDao().update(track);
+                database.trackDao().updateTrack(track);
                 handler.post(() -> Toast.makeText(context, "Trim saved", Toast.LENGTH_SHORT).show());
             });
             dialog.dismiss();

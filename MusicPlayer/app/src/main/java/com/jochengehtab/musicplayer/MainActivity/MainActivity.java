@@ -56,7 +56,10 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String ALL_TRACKS_PLAYLIST_NAME = "All Tracks";
     private static final int PERMISSION_REQUEST_CODE = 101;
-
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
+    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private MusicUtility musicUtility;
     private TrackAdapter trackAdapter;
     private TextView bottomTitle;
@@ -67,14 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private BottomOptions bottomOptions;
     private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
-
     private ProgressBar updateProgressBar;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-
-    private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
-    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-
     private AppDatabase database;
 
     @Override
@@ -144,9 +140,18 @@ public class MainActivity extends AppCompatActivity {
         final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
 
         slideUp.setAnimationListener(new Animation.AnimationListener() {
-            @Override public void onAnimationStart(Animation animation) {}
-            @Override public void onAnimationEnd(Animation animation) { searchView.setVisibility(View.GONE); }
-            @Override public void onAnimationRepeat(Animation animation) {}
+            @Override
+            public void onAnimationStart(Animation animation) {
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                searchView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+            }
         });
 
         // Attach listeners to the UI buttons
@@ -174,8 +179,13 @@ public class MainActivity extends AppCompatActivity {
         });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override public boolean onQueryTextSubmit(String query) { return false; }
-            @Override public boolean onQueryTextChange(String newText) {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
                 filterTracks(newText);
                 return true;
             }
@@ -215,46 +225,43 @@ public class MainActivity extends AppCompatActivity {
                 Log.e("MainActivity", "Error scanning MediaStore", e);
             }
 
-            // Get the current number of tracks in our database.
-            int currentDbTrackCount = database.trackDao().getTrackCount();
+            database.trackDao().syncTracks(mediaStoreTracks);
 
-            // Only sync if the counts are different.
-            boolean syncIsNeeded = (mediaStoreTracks.size() != currentDbTrackCount);
+            // Collect all IDs found currently on the phone
+            List<String> currentMediaStoreUris = mediaStoreTracks.stream()
+                    .map(track -> track.uri)
+                    .collect(Collectors.toList());
 
-            // This is a special case for the very first run after an install.
-            Playlist allTracksPlaylist = database.playlistDao().getPlaylistByName(ALL_TRACKS_PLAYLIST_NAME);
-            if (allTracksPlaylist == null) {
-                syncIsNeeded = true;
+            if (!currentMediaStoreUris.isEmpty()) {
+                database.trackDao().deleteOrphanedTracks(currentMediaStoreUris);
             }
 
-            if (syncIsNeeded) {
+            List<Track> allTracksFromDb = database.trackDao().getAllTracks();
 
-                // TOOD when this is triggerd then all playlists get wiped
-                database.trackDao().fullResync(mediaStoreTracks);
+            Playlist allTracksPlaylist = database.playlistDao().getPlaylist(ALL_TRACKS_PLAYLIST_NAME);
+            long playlistId;
 
-                allTracksPlaylist = database.playlistDao().getPlaylistByName(ALL_TRACKS_PLAYLIST_NAME);
-                long allTracksPlaylistId;
+            if (allTracksPlaylist == null) {
+                playlistId = database.playlistDao().createPlaylist(new Playlist(ALL_TRACKS_PLAYLIST_NAME));
+            } else {
+                playlistId = allTracksPlaylist.id;
+                database.playlistDao().removeAllTracksFromPlaylist(playlistId);
+            }
 
-                // Insert the All Tracks Playlist if it doesn't exist
-                if (allTracksPlaylist == null) {
-                    allTracksPlaylistId = database.playlistDao().insertPlaylist(new Playlist(ALL_TRACKS_PLAYLIST_NAME));
-                } else {
-                    allTracksPlaylistId = allTracksPlaylist.id;
-                }
+            // 4. Create Links
+            List<PlaylistTrackCrossRef> crossRefs = new ArrayList<>();
+            for (Track track : allTracksFromDb) {
+                PlaylistTrackCrossRef ref = new PlaylistTrackCrossRef();
+                ref.playlistId = playlistId;
+                ref.trackId = track.id;
+                crossRefs.add(ref);
+            }
 
-                // And re-populate it.
-                List<Track> allTracksFromDb = database.trackDao().getAllTracks();
-                List<PlaylistTrackCrossRef> crossRefs = new ArrayList<>();
-                for (Track track : allTracksFromDb) {
-                    PlaylistTrackCrossRef ref = new PlaylistTrackCrossRef();
-                    ref.playlistId = allTracksPlaylistId;
-                    ref.trackId = track.id;
-                    crossRefs.add(ref);
-                }
+            if (!crossRefs.isEmpty()) {
                 database.playlistDao().addTracksToPlaylist(crossRefs);
             }
 
-            // Always load the UI at the end, whether a sync happened or not.
+            // 5. Update UI
             handler.post(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 loadAndShowPlaylist(currentPlaylistName);
@@ -291,7 +298,6 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Loads a playlist's tracks from the database.
-     * This method is now SIMPLER because "All Tracks" is no longer a special case.
      */
     private void loadAndShowPlaylist(String playlistName) {
         musicUtility.stopAndCancel();
@@ -300,7 +306,6 @@ public class MainActivity extends AppCompatActivity {
         trackAdapter.setCurrentPlaylistName(playlistName);
 
         executor.execute(() -> {
-            // NO MORE "if (playlistName.equals...)" NEEDED!
             PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
             List<Track> playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
 
@@ -401,6 +406,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        musicUtility.stopAndCancel();
+        unregisterReceiver(noisyReceiver);
+        executor.shutdown();
+    }
+
     private class BecomingNoisyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -411,13 +424,5 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        musicUtility.stopAndCancel();
-        unregisterReceiver(noisyReceiver);
-        executor.shutdown();
     }
 }

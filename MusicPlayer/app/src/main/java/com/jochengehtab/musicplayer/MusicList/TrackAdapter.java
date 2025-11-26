@@ -36,12 +36,12 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final OnItemClickListener listener;
     private final List<Track> tracks = new ArrayList<>();
     private final AppDatabase database;
-    private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Trim trim;
     private final Rename rename;
     private final Reset reset;
+    private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
 
     public TrackAdapter(
             Context context,
@@ -167,7 +167,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private void addTrackToPlaylist(String playlistName, Track track) {
         executor.execute(() -> {
             // Get the playlist ID from its name
-            Playlist playlist = database.playlistDao().getPlaylistByName(playlistName);
+            Playlist playlist = database.playlistDao().getPlaylist(playlistName);
             if (playlist != null) {
                 // Create the relationship entry
                 PlaylistTrackCrossRef crossRef = new PlaylistTrackCrossRef();
@@ -175,7 +175,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                 crossRef.trackId = track.id;
 
                 // Insert it into the database
-                database.playlistDao().insertPlaylistTrackCrossRef(crossRef);
+                database.playlistDao().addTrackToPlaylist(crossRef);
 
                 handler.post(() -> Toast.makeText(context, "Added to " + playlistName, Toast.LENGTH_SHORT).show());
             }

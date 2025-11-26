@@ -95,13 +95,13 @@ public class PlaylistDialog {
         }
 
         executor.execute(() -> {
-            Playlist existing = database.playlistDao().getPlaylistByName(name);
+            Playlist existing = database.playlistDao().getPlaylist(name);
             if (existing != null) {
                 handler.post(() -> Toast.makeText(context, "A playlist with that name already exists.", Toast.LENGTH_SHORT).show());
                 return;
             }
 
-            database.playlistDao().insertPlaylist(new Playlist(name));
+            database.playlistDao().createPlaylist(new Playlist(name));
             handler.post(() -> {
                 Toast.makeText(context, "Playlist '" + name + "' created.", Toast.LENGTH_SHORT).show();
                 createPlaylistDialog.dismiss();
@@ -153,7 +153,7 @@ public class PlaylistDialog {
 
     private void deletePlaylist(String playlistName) {
         executor.execute(() -> {
-            database.playlistDao().deletePlaylistByName(playlistName);
+            database.playlistDao().deletePlaylist(playlistName);
             handler.post(() -> {
                 Toast.makeText(context, "Playlist '" + playlistName + "' deleted.", Toast.LENGTH_SHORT).show();
                 playlistDialog.dismiss();

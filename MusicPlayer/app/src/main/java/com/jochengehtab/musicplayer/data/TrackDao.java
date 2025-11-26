@@ -4,47 +4,35 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
-import androidx.room.Transaction;
-import androidx.room.Update; // Import Update
+import androidx.room.Update;
 
 import java.util.List;
 
 @Dao
 public interface TrackDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<Track> tracks);
+    /**
+     * Syncs MediaStore tracks into the local database.
+     * <p>
+     * Use OnConflictStrategy.IGNORE:
+     * 1. If the track is new, it gets inserted.
+     * 2. If the track is already there (and maybe has custom trim times),
+     * it is LEFT ALONE. We don't want to overwrite user data.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void syncTracks(List<Track> tracks);
 
     @Query("SELECT * FROM tracks")
     List<Track> getAllTracks();
 
-    @Update
-    void update(Track track);
-
-    @Query("SELECT COUNT(*) FROM tracks")
-    int getTrackCount();
-
-    @Query("DELETE FROM PlaylistTrackCrossRef")
-    void clearPlaylistJoins();
-
-    @Query("DELETE FROM playlists")
-    void clearPlaylists();
-
-    @Query("DELETE FROM tracks")
-    void clearAllTracks();
+    @Query("SELECT * FROM tracks WHERE id = :trackId")
+    Track getTrack(long trackId);
 
     /**
-     * This completely wipes all
-     * music-related data and replaces it with a fresh list.
-     * This is the simplest way to handle additions, deletions, and changes.
+     * Save changes when the user edits the Start/End trim times.
      */
-    @Transaction
-    default void fullResync(List<Track> newTracks) {
-        // 1. Wipe all existing data in the correct order to respect foreign keys.
-        clearPlaylistJoins(); // Clear the link table first.
-        clearPlaylists();     // Then clear the playlists table.
-        clearAllTracks();     // Finally, clear the main tracks table.
+    @Update
+    void updateTrack(Track track);
 
-        // 2. Insert the fresh list of tracks from MediaStore.
-        insertAll(newTracks);
-    }
+    @Query("DELETE FROM tracks WHERE uri NOT IN (:currentUris)")
+    void deleteOrphanedTracks(List<String> currentUris);
 }

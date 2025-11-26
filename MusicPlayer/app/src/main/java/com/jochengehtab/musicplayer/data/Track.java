@@ -1,9 +1,10 @@
 package com.jochengehtab.musicplayer.data;
 
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "tracks")
+@Entity(tableName = "tracks", indices = {@Index(value = {"uri"}, unique = true)})
 public class Track {
     @PrimaryKey(autoGenerate = true)
     public long id;

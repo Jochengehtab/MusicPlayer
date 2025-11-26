@@ -69,7 +69,7 @@ public class Rename {
 
                     // Update the database in the background
                     executor.execute(() -> {
-                        database.trackDao().update(current);
+                        database.trackDao().updateTrack(current);
 
                         // After saving, update the UI on the main thread
                         handler.post(() -> {

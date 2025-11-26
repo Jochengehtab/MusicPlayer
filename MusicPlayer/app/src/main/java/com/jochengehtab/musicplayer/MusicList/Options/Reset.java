@@ -32,7 +32,7 @@ public class Reset {
 
         // Update the track in the database on a background thread
         executor.execute(() -> {
-            database.trackDao().update(track);
+            database.trackDao().updateTrack(track);
             handler.post(() -> Toast.makeText(context, "Track trim has been reset", Toast.LENGTH_SHORT).show());
         });
     }
