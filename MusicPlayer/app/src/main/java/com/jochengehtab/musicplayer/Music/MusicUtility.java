@@ -25,7 +25,10 @@ public class MusicUtility {
     private final Consumer<String> updateBottomTitle;
     private final Runnable updateBottomPlayIcon;
     private final Random random = new Random();
-    private final OnPlaybackStateListener onPlaybackStateListener;
+
+    // The internal listener that handles Queue logic (Looping/Next Track)
+    private final OnPlaybackStateListener internalPlaybackListener;
+
     private MediaPlayer mediaPlayer;
     private boolean loopEnabled = false;
     private boolean mixEnabled = false;
@@ -36,20 +39,22 @@ public class MusicUtility {
         this.context = context;
         this.updateBottomPlayIcon = updateBottomPlayIcon;
         this.updateBottomTitle = updateBottomTitle;
-        this.onPlaybackStateListener = new OnPlaybackStateListener() {
+
+        // Define the internal logic
+        this.internalPlaybackListener = new OnPlaybackStateListener() {
             @Override
-            public void onPlaybackStarted() {
-                // This can be used for UI updates if needed
-            }
+            public void onPlaybackStarted() { }
 
             @Override
             public void onPlaybackStopped() {
-                // When a track finishes, automatically play the next one in the queue
                 synchronized (MusicUtility.this) {
                     if (cancelToken.get()) {
                         return;
                     }
-                    currentIndex++;
+                    // Loop Logic: If loop is enabled, don't move to next index.
+                    if (!loopEnabled) {
+                        currentIndex++;
+                    }
                     playNextInQueue();
                 }
             }
@@ -57,13 +62,40 @@ public class MusicUtility {
     }
 
     /**
-     * Plays a track. If the track has been trimmed, it plays the specified segment.
-     *
-     * @param track    The Track object to play.
-     * @param listener A listener to be notified of playback start/stop events.
-     * @param timespan Optional. An array of [startTimeMs, endTimeMs] to override the track's saved trim times. Used for previewing.
+     * Public method to play a single track.
+     * FIX: Wraps the UI listener so both UI updates AND internal loop logic run.
      */
-    public void play(Track track, OnPlaybackStateListener listener, long... timespan) {
+    public void play(Track track, OnPlaybackStateListener uiListener, long... timespan) {
+        cancelToken.set(false);
+        this.playQueue = new ArrayList<>(); 
+        this.playQueue.add(track);
+        this.currentIndex = 0;
+        this.mixEnabled = false;
+
+        // Create a Composite Listener
+        OnPlaybackStateListener compositeListener = new OnPlaybackStateListener() {
+            @Override
+            public void onPlaybackStarted() {
+                if (uiListener != null) uiListener.onPlaybackStarted();
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                // 1. Update UI (Main Activity)
+                if (uiListener != null) uiListener.onPlaybackStopped();
+
+                // 2. Trigger Internal Logic (Queue/Loop)
+                internalPlaybackListener.onPlaybackStopped();
+            }
+        };
+
+        playInternal(track, compositeListener, timespan);
+    }
+
+    /**
+     * Internal method handles MediaPlayer.
+     */
+    private void playInternal(Track track, OnPlaybackStateListener listener, long... timespan) {
         if (isInitialized()) {
             mediaPlayer.release();
         }
@@ -72,12 +104,10 @@ public class MusicUtility {
         long startMs;
         long endMs;
 
-        // Check if an override timespan is provided (for previewing in Trim dialog)
         if (timespan != null && timespan.length >= 2) {
             startMs = timespan[0];
             endMs = timespan[1];
         } else {
-            // Otherwise, use the start and end times stored in the Track object
             startMs = track.startTime;
             endMs = track.endTime;
         }
@@ -91,12 +121,10 @@ public class MusicUtility {
                     listener.onPlaybackStarted();
                 }
 
-                // Schedule a stop command for when the trimmed segment should end
                 long durationMs = endMs - startMs;
                 handler.postDelayed(() -> {
-                    // Check if this player is still the active one
                     if (mediaPlayer == mp && mp.isPlaying()) {
-                        mp.pause(); // Use pause instead of stop for smoother transitions
+                        mp.pause();
                     }
                     if (listener != null) {
                         listener.onPlaybackStopped();
@@ -111,12 +139,6 @@ public class MusicUtility {
         }
     }
 
-    /**
-     * Plays a given list of tracks.
-     *
-     * @param musicFiles The list of tracks to play.
-     * @param shouldMix  If true, the playlist will be shuffled before playing.
-     */
     public synchronized void playList(List<Track> musicFiles, boolean shouldMix) {
         if (musicFiles == null || musicFiles.isEmpty()) {
             Toast.makeText(context, "Playlist is empty.", Toast.LENGTH_SHORT).show();
@@ -143,19 +165,21 @@ public class MusicUtility {
         }
 
         if (currentIndex >= playQueue.size()) {
-            // End of playlist reached
+            // End of playlist
             if (loopEnabled) {
-                currentIndex = 0; // Loop back to the start
+                currentIndex = 0;
             } else {
                 mixEnabled = false;
                 updateBottomPlayIcon.run();
-                return; // Stop playback
+                return;
             }
         }
 
         Track nextTrack = playQueue.get(currentIndex);
         updateBottomTitle.accept(nextTrack.title);
-        play(nextTrack, onPlaybackStateListener);
+
+        // Pass the internal listener here so the chain continues
+        playInternal(nextTrack, internalPlaybackListener);
     }
 
     public boolean toggleLoop() {
@@ -165,7 +189,7 @@ public class MusicUtility {
 
     public synchronized void stopAndCancel() {
         cancelToken.set(true);
-        handler.removeCallbacksAndMessages(null); // Cancel any pending stop commands
+        handler.removeCallbacksAndMessages(null);
         if (isInitialized()) {
             if (mediaPlayer.isPlaying()) {
                 mediaPlayer.stop();
