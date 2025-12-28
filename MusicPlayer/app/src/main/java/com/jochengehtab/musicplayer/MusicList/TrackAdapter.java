@@ -1,6 +1,8 @@
 package com.jochengehtab.musicplayer.MusicList;
 
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
@@ -8,6 +10,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -15,6 +19,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
+import com.jochengehtab.musicplayer.AudioClassifier.Event;
 import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.Options.Rename;
@@ -28,6 +34,7 @@ import com.jochengehtab.musicplayer.data.Track;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -42,6 +49,7 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     private final Rename rename;
     private final Reset reset;
     private String currentPlaylistName = MainActivity.ALL_TRACKS_PLAYLIST_NAME;
+    private AudioClassifier audioClassifier;
 
     public TrackAdapter(
             Context context,
@@ -102,11 +110,87 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
                 } else if (id == R.id.action_remove) {
                     removeTrackFromCurrentPlaylist(current);
                     return true;
+                } else if (id == R.id.analyze) {
+                    performAnalysis(current);
+                    return true;
                 }
                 return false;
             });
             popup.show();
         });
+    }
+
+    private void performAnalysis(Track track) {
+        // 1. Show Loading Dialog
+        ProgressDialog progressDialog = new ProgressDialog(context);
+        progressDialog.setMessage("Analyzing audio... (this may take a moment)");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        executor.execute(() -> {
+            try {
+                // 2. Lazy Load the Classifier (only when needed)
+                if (audioClassifier == null) {
+                    audioClassifier = new AudioClassifier(context);
+                }
+
+                // 3. Parse URI and Run Analysis
+                Uri audioUri = Uri.parse(track.uri);
+                List<Event> events = audioClassifier.analyzeAudio(audioUri);
+
+                // 4. Show Results on Main Thread
+                handler.post(() -> {
+                    progressDialog.dismiss();
+                    showAnalysisResultsDialog(track.title, events);
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                handler.post(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(context, "Analysis failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void showAnalysisResultsDialog(String title, List<Event> events) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Analysis: " + title);
+
+        if (events == null || events.isEmpty()) {
+            builder.setMessage("No specific audio events detected.");
+        } else {
+            // Build a string representation of the events
+            StringBuilder sb = new StringBuilder();
+            for (Event event : events) {
+                // Format: Label (00:01.5 - 00:05.2)
+                String start = formatTime(event.start);
+                String end = formatTime(event.end);
+                sb.append("• ").append(event.label)
+                        .append("\n   ").append(start).append(" - ").append(end)
+                        .append("\n\n");
+            }
+
+            // Put it in a ScrollView in case there are many events
+            ScrollView scrollView = new ScrollView(context);
+            TextView textView = new TextView(context);
+            textView.setText(sb.toString());
+            textView.setPadding(50, 30, 50, 30);
+            textView.setTextSize(16);
+            scrollView.addView(textView);
+
+            builder.setView(scrollView);
+        }
+
+        builder.setPositiveButton("OK", null);
+        builder.show();
+    }
+
+    private String formatTime(float seconds) {
+        int min = (int) (seconds / 60);
+        float sec = seconds % 60;
+        return String.format(Locale.US, "%02d:%04.1f", min, sec);
     }
 
     private void removeTrackFromCurrentPlaylist(Track track) {

@@ -24,6 +24,7 @@
     <string name="search">Search</string>
     <string name="sort">Sort\n</string>
     <string name="remove">Remove\n</string>
+    <string name="analyze">Analyze</string>
     <string-array name="playback_options">
         <item>Loop</item>
         <item>Mix</item>
