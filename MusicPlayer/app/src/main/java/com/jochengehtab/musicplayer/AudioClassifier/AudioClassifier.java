@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.AudioClassifier;
 
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
@@ -226,7 +225,7 @@ public class AudioClassifier {
             // If the URI has no scheme (e.g. just "/storage/emulated/0/..."),
             // ContentResolver will fail. We must convert it to "file://..."
             if (audioUri.getScheme() == null) {
-                File file = new File(audioUri.getPath());
+                File file = new File(Objects.requireNonNull(audioUri.getPath()));
                 audioUri = Uri.fromFile(file);
             }
             pfd = context.getContentResolver().openFileDescriptor(audioUri, "r");
@@ -283,6 +282,7 @@ public class AudioClassifier {
                 int inputBufferIndex = codec.dequeueInputBuffer(5000);
                 if (inputBufferIndex >= 0) {
                     ByteBuffer inputBuffer = codec.getInputBuffer(inputBufferIndex);
+                    assert inputBuffer != null;
                     int sampleSize = extractor.readSampleData(inputBuffer, 0);
                     if (sampleSize < 0) {
                         codec.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
@@ -328,17 +328,17 @@ public class AudioClassifier {
         extractor.release();
         pfd.close();
 
-        return convertAndResample(rawData, sampleIndex, inputSampleRate, SAMPLE_RATE, channelCount);
+        return convertAndResample(rawData, sampleIndex, inputSampleRate, channelCount);
     }
 
     /**
      * Converts short[] -> float[], mixes down stereo to mono, and resamples.
      */
-    private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int targetRate, int channels) {
+    private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int channels) {
         // Mono Mixdown (if needed)
         int monoLength = (channels == 2) ? length / 2 : length;
 
-        double ratio = (double) inputRate / targetRate;
+        double ratio = (double) inputRate / AudioClassifier.SAMPLE_RATE;
         int targetLength = (int) (monoLength / ratio);
 
         float[] result = new float[targetLength];
