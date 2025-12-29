@@ -9,11 +9,13 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
-import org.pytorch.IValue;
-import org.pytorch.LiteModuleLoader;
-import org.pytorch.Module;
-import org.pytorch.Tensor;
+// --- TensorFlow Lite Imports (for YAMNet) ---
 import org.tensorflow.lite.Interpreter;
+
+// --- ExecuTorch Imports (for Classifier) ---
+import org.pytorch.executorch.Module;
+import org.pytorch.executorch.Tensor;
+import org.pytorch.executorch.EValue;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,10 +38,12 @@ public class AudioClassifier {
 
     private static final String TAG = "AudioClassifier";
 
+    // Models
     public static final String YAMNET_MODEL = "yamnet_with_embeddings.tflite";
-    public static final String CLASSIFIER_MODEL = "applause_silence_classifier.ptl";
+    public static final String CLASSIFIER_MODEL = "applause_silence_classifier.pte"; // CHANGED to .pte
     public static final String LABELS_FILE = "labels.txt";
 
+    // Audio Constants
     public static final int SAMPLE_RATE = 16000;
     public static final float WINDOW_SEC = 1.0f;
     public static final float HOP_SEC = 0.5f;
@@ -50,9 +54,14 @@ public class AudioClassifier {
     // --- Member Variables ---
     private final Context context;
     private final List<String> labels;
-    private final Module classifier; // PyTorch
-    private final Interpreter yamnet; // TensorFlow Lite
 
+    // ExecuTorch Module
+    private final Module classifier;
+
+    // TFLite Interpreter
+    private final Interpreter yamnet;
+
+    // Buffers
     private final float[][] outputEmbeddings;
     private final Map<Integer, Object> yamnetOutputs;
 
@@ -61,16 +70,16 @@ public class AudioClassifier {
         this.labels = loadLabels();
 
         try {
-            // Load PyTorch Model
+            // 1. Load ExecuTorch Model (Classifier)
             String classifierPath = assetFilePath(CLASSIFIER_MODEL);
-            this.classifier = LiteModuleLoader.load(classifierPath);
+            this.classifier = Module.load(classifierPath);
 
-            // Load TFLite Model
+            // 2. Load TFLite Model (YAMNet)
             String yamnetPath = assetFilePath(YAMNET_MODEL);
             Interpreter.Options options = new Interpreter.Options();
             this.yamnet = new Interpreter(new File(yamnetPath), options);
 
-            // 1. Resize Input: 16000 samples (1.0 second)
+            // Resize Input: 16000 samples (1.0 second)
             yamnet.resizeInput(0, new int[]{WINDOW_SAMPLES});
             yamnet.allocateTensors();
 
@@ -103,7 +112,7 @@ public class AudioClassifier {
             float[] embeddings = getYamnetEmbeddings(chunk);
             if (embeddings.length == 0) continue;
 
-            // 2. Get Prediction (PyTorch)
+            // 2. Get Prediction (ExecuTorch)
             String label = getPrediction(embeddings);
 
             float currentTime = (float) startSample / SAMPLE_RATE;
@@ -125,12 +134,11 @@ public class AudioClassifier {
             // Run Inference
             yamnet.runForMultipleInputsOutputs(new Object[]{inputBuffer}, yamnetOutputs);
         } catch (Exception e) {
-            Log.e("AudioClassifier", "YAMNet inference failed", e);
+            Log.e(TAG, "YAMNet inference failed", e);
             return new float[0];
         }
 
         // --- Process the embeddings output ---
-        // We know we have exactly 2 frames now.
         int embeddingDim = 1024;
         float[] meanEmbeddings = new float[embeddingDim];
         int rows = outputEmbeddings.length; // This is 2
@@ -151,28 +159,42 @@ public class AudioClassifier {
     }
 
     /**
-     * Runs PyTorch Mobile model on the embeddings.
+     * Runs ExecuTorch model on the embeddings.
      */
     private String getPrediction(float[] embeddings) {
-        // Create Tensor [1, 1024]
-        long[] shape = {1, embeddings.length};
-        Tensor inputTensor = Tensor.fromBlob(embeddings, shape);
+        try {
+            // 1. Prepare Tensor [1, 1024]
+            long[] shape = {1, embeddings.length};
+            Tensor inputTensor = Tensor.fromBlob(embeddings, shape);
 
-        // Run Inference
-        Tensor outputTensor = classifier.forward(IValue.from(inputTensor)).toTensor();
-        float[] scores = outputTensor.getDataAsFloatArray();
+            // 2. Wrap in EValue
+            EValue inputEValue = EValue.from(inputTensor);
 
-        // Find Max Score
-        int maxIndex = -1;
-        float maxScore = -Float.MAX_VALUE;
-        for (int i = 0; i < scores.length; i++) {
-            if (scores[i] > maxScore) {
-                maxScore = scores[i];
-                maxIndex = i;
+            // 3. Run Inference
+            // forward() returns an array of EValues
+            EValue[] outputs = classifier.forward(inputEValue);
+
+            // 4. Unwrap Output
+            // We expect the first output to be our logits/scores
+            Tensor outputTensor = outputs[0].toTensor();
+            float[] scores = outputTensor.getDataAsFloatArray();
+
+            // 5. Find Max Score (ArgMax)
+            int maxIndex = -1;
+            float maxScore = -Float.MAX_VALUE;
+            for (int i = 0; i < scores.length; i++) {
+                if (scores[i] > maxScore) {
+                    maxScore = scores[i];
+                    maxIndex = i;
+                }
             }
-        }
 
-        return (maxIndex >= 0 && maxIndex < labels.size()) ? labels.get(maxIndex) : "Unknown";
+            return (maxIndex >= 0 && maxIndex < labels.size()) ? labels.get(maxIndex) : "Unknown";
+
+        } catch (Exception e) {
+            Log.e(TAG, "ExecuTorch inference failed", e);
+            return "Error";
+        }
     }
 
     private List<Event> consolidatePredictions(List<Prediction> predictions) {
@@ -200,7 +222,13 @@ public class AudioClassifier {
         ParcelFileDescriptor pfd = null;
 
         try {
-            // Open the file using ContentResolver (handles content:// and file://)
+
+            // If the URI has no scheme (e.g. just "/storage/emulated/0/..."),
+            // ContentResolver will fail. We must convert it to "file://..."
+            if (audioUri.getScheme() == null) {
+                File file = new File(audioUri.getPath());
+                audioUri = Uri.fromFile(file);
+            }
             pfd = context.getContentResolver().openFileDescriptor(audioUri, "r");
             if (pfd == null) throw new IOException("Cannot open URI: " + audioUri);
 
@@ -298,7 +326,7 @@ public class AudioClassifier {
         codec.stop();
         codec.release();
         extractor.release();
-        pfd.close(); // Important: Close the file descriptor
+        pfd.close();
 
         return convertAndResample(rawData, sampleIndex, inputSampleRate, SAMPLE_RATE, channelCount);
     }
@@ -307,18 +335,14 @@ public class AudioClassifier {
      * Converts short[] -> float[], mixes down stereo to mono, and resamples.
      */
     private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int targetRate, int channels) {
-        // 1. Mono Mixdown (if needed)
-        // If stereo, we average left+right. Output length is halved.
+        // Mono Mixdown (if needed)
         int monoLength = (channels == 2) ? length / 2 : length;
 
-        // We calculate the target size for resampling to avoid creating another huge float[]
         double ratio = (double) inputRate / targetRate;
         int targetLength = (int) (monoLength / ratio);
 
         float[] result = new float[targetLength];
 
-        // Combined loop: Resample + Mono Mixdown + Short-to-Float conversion
-        // This avoids creating intermediate arrays, saving massive amounts of memory.
         for (int i = 0; i < targetLength; i++) {
             double inputIndex = i * ratio;
             int idx1 = (int) inputIndex;
@@ -385,7 +409,6 @@ public class AudioClassifier {
 
     private String assetFilePath(String assetName) throws IOException {
         File file = new File(context.getCacheDir(), assetName);
-        // Always overwrite to ensure latest model version during dev
         try (InputStream is = context.getAssets().open(assetName);
              FileOutputStream fos = new FileOutputStream(file)) {
             byte[] buffer = new byte[1024];

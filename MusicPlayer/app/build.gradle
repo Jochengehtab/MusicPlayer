@@ -42,10 +42,18 @@ android {
 
 dependencies {
 
-    // PyTorch Mobile Lite for inference
-    implementation 'org.pytorch:pytorch_android_lite:2.1.0'
-    // TensorFlow Lite
-    implementation 'org.tensorflow:tensorflow-lite:2.17.0'
+    // ... other dependencies
+
+    // --- ExecuTorch (Use 1.0.1 to match your Python version) ---
+    // The core library (includes XNNPACK backend)
+    implementation 'org.pytorch:executorch-android:1.0.1'
+
+    // Required native loaders (ExecuTorch depends on these but doesn't bundle them)
+    implementation 'com.facebook.fbjni:fbjni:0.5.1'
+    implementation 'com.facebook.soloader:soloader:0.10.5'
+
+    // TensorFlow Lite (Keep for YAMNet)
+    implementation 'com.google.ai.edge.litert:litert:1.4.1'
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
