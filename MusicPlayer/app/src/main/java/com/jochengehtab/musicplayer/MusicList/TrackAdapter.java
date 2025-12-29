@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -121,24 +122,40 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
     }
 
     private void performAnalysis(Track track) {
-        // 1. Show Loading Dialog
-        ProgressDialog progressDialog = new ProgressDialog(context);
-        progressDialog.setMessage("Analyzing audio... (this may take a moment)");
-        progressDialog.setCancelable(false);
+        // 1. Inflate the Custom Layout
+        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_analysis_progress, null);
+        TextView progressMessage = dialogView.findViewById(R.id.progressMessage);
+        TextView progressPercent = dialogView.findViewById(R.id.progressPercent);
+        ProgressBar progressBar = dialogView.findViewById(R.id.progressBar);
+
+        // 2. Build AlertDialog
+        AlertDialog progressDialog = new AlertDialog.Builder(context)
+                .setTitle("Analyzing Track")
+                .setView(dialogView)
+                .setCancelable(false) // Prevent closing while analyzing
+                .create();
+
         progressDialog.show();
 
         executor.execute(() -> {
             try {
-                // 2. Lazy Load the Classifier (only when needed)
                 if (audioClassifier == null) {
                     audioClassifier = new AudioClassifier(context);
                 }
 
-                // 3. Parse URI and Run Analysis
                 Uri audioUri = Uri.parse(track.uri);
-                List<Event> events = audioClassifier.analyzeAudio(audioUri);
 
-                // 4. Show Results on Main Thread
+                // 3. Call analyzeAudio with the Listener
+                List<Event> events = audioClassifier.analyzeAudio(audioUri, (percentage, message) -> {
+                    // Update UI on Main Thread
+                    handler.post(() -> {
+                        progressBar.setProgress(percentage);
+                        progressPercent.setText(percentage + "%");
+                        progressMessage.setText(message);
+                    });
+                });
+
+                // 4. Show Results
                 handler.post(() -> {
                     progressDialog.dismiss();
                     showAnalysisResultsDialog(track.title, events);

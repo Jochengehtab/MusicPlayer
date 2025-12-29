@@ -8,10 +8,8 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
-// --- TensorFlow Lite Imports (for YAMNet) ---
 import org.tensorflow.lite.Interpreter;
 
-// --- ExecuTorch Imports (for Classifier) ---
 import org.pytorch.executorch.Module;
 import org.pytorch.executorch.Tensor;
 import org.pytorch.executorch.EValue;
@@ -34,6 +32,10 @@ import java.util.Map;
 import java.util.Objects;
 
 public class AudioClassifier {
+
+    public interface AnalysisProgressListener {
+        void onProgress(int percentage, String message);
+    }
 
     private static final String TAG = "AudioClassifier";
 
@@ -94,14 +96,27 @@ public class AudioClassifier {
         }
     }
 
-    public List<Event> analyzeAudio(Uri audioUri) throws IOException {
-        float[] waveform = decodeAudioFile(audioUri);
+    public List<Event> analyzeAudio(Uri audioUri, AnalysisProgressListener listener) throws IOException {
+
+        // Notify decoding start
+        if (listener != null) listener.onProgress(0, "Decoding audio...");
+
+        float[] waveform = decodeAudioFile(audioUri, listener);
         if (waveform.length == 0) return Collections.emptyList();
 
         ArrayList<Prediction> predictions = new ArrayList<>();
 
+        int totalSamples = waveform.length - WINDOW_SAMPLES;
+
         // Loop through audio with overlap
         for (int startSample = 0; startSample <= waveform.length - WINDOW_SAMPLES; startSample += HOP_SAMPLES) {
+
+            if (listener != null) {
+                // Calculate percentage
+                int percent = (int) (((float) startSample / totalSamples) * 100);
+                listener.onProgress(percent, "Analyzing...");
+            }
+
             int endSample = startSample + WINDOW_SAMPLES;
 
             // Extract the chunk
@@ -117,6 +132,10 @@ public class AudioClassifier {
             float currentTime = (float) startSample / SAMPLE_RATE;
             predictions.add(new Prediction(currentTime, label));
         }
+
+
+        // Notify finishing
+        if (listener != null) listener.onProgress(100, "Finalizing...");
 
         return consolidatePredictions(predictions);
     }
@@ -216,14 +235,11 @@ public class AudioClassifier {
         return events;
     }
 
-    private float[] decodeAudioFile(Uri audioUri) throws IOException {
+    private float[] decodeAudioFile(Uri audioUri, AnalysisProgressListener listener) throws IOException {
         MediaExtractor extractor = new MediaExtractor();
         ParcelFileDescriptor pfd = null;
 
         try {
-
-            // If the URI has no scheme (e.g. just "/storage/emulated/0/..."),
-            // ContentResolver will fail. We must convert it to "file://..."
             if (audioUri.getScheme() == null) {
                 File file = new File(Objects.requireNonNull(audioUri.getPath()));
                 audioUri = Uri.fromFile(file);
@@ -265,8 +281,9 @@ public class AudioClassifier {
         int channelCount = format.containsKey(MediaFormat.KEY_CHANNEL_COUNT) ?
                 format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) : 1;
 
-        // Estimate size
+        // Total Duration for progress calculation
         long durationUs = format.containsKey(MediaFormat.KEY_DURATION) ? format.getLong(MediaFormat.KEY_DURATION) : 0;
+
         int estimatedSamples = (int) ((durationUs / 1000000.0) * inputSampleRate * channelCount);
         if (estimatedSamples <= 0) estimatedSamples = 1024 * 1024;
 
@@ -276,6 +293,9 @@ public class AudioClassifier {
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
         boolean inputDone = false;
         boolean outputDone = false;
+
+        // Progress tracking variable
+        int lastReportedPercent = -1;
 
         while (!outputDone) {
             if (!inputDone) {
@@ -288,6 +308,16 @@ public class AudioClassifier {
                         codec.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         inputDone = true;
                     } else {
+                        long sampleTime = extractor.getSampleTime();
+                        if (listener != null && durationUs > 0 && sampleTime > 0) {
+                            int percent = (int) ((sampleTime * 100) / durationUs);
+                            // Only update if percentage changed (avoids UI flooding)
+                            if (percent > lastReportedPercent) {
+                                listener.onProgress(percent, "Decoding audio...");
+                                lastReportedPercent = percent;
+                            }
+                        }
+
                         codec.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.getSampleTime(), 0);
                         extractor.advance();
                     }
@@ -328,22 +358,34 @@ public class AudioClassifier {
         extractor.release();
         pfd.close();
 
-        return convertAndResample(rawData, sampleIndex, inputSampleRate, channelCount);
+        // Pass listener to resampling as well, as this can take time for large files
+        return convertAndResample(rawData, sampleIndex, inputSampleRate, channelCount, listener);
     }
 
     /**
      * Converts short[] -> float[], mixes down stereo to mono, and resamples.
      */
-    private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int channels) {
+    private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int channels, AnalysisProgressListener listener) {
+        if (listener != null) listener.onProgress(0, "Resampling...");
+
         // Mono Mixdown (if needed)
         int monoLength = (channels == 2) ? length / 2 : length;
-
         double ratio = (double) inputRate / AudioClassifier.SAMPLE_RATE;
         int targetLength = (int) (monoLength / ratio);
-
         float[] result = new float[targetLength];
 
+        int lastReportedPercent = -1;
+
         for (int i = 0; i < targetLength; i++) {
+
+            if (listener != null) {
+                int percent = (int) (((float) i / targetLength) * 100);
+                if (percent > lastReportedPercent) {
+                    listener.onProgress(percent, "Resampling...");
+                    lastReportedPercent = percent;
+                }
+            }
+
             double inputIndex = i * ratio;
             int idx1 = (int) inputIndex;
             int idx2 = idx1 + 1;
