@@ -276,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // TODO save selected sorting scheme
     private void showSortMenu(View v) {
         PopupMenu popup = new PopupMenu(this, v);
         popup.getMenuInflater().inflate(R.menu.sort_menu, popup.getMenu());
