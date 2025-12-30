@@ -363,6 +363,51 @@ public class AudioClassifier {
     }
 
     /**
+     * Scans the whole song and returns a "Style Vector" (1024 floats).
+     * This represents the average acoustic features of the track.
+     */
+    public float[] getStyleEmbedding(Uri audioUri) throws IOException {
+        // 1. Decode the file
+        // Pass null for listener if you don't want UI updates here
+        float[] waveform = decodeAudioFile(audioUri, null);
+
+        if (waveform.length == 0) return new float[0];
+
+        // 2. Prepare to calculate the mean (average)
+        int embeddingDim = 1024; // YAMNet standard
+        float[] sumEmbeddings = new float[embeddingDim];
+        int totalFrames = 0;
+
+        // 3. Step through the audio
+        // We can use a larger hop (e.g. 2 seconds) to make this faster
+        // because "style" doesn't change every millisecond.
+        int fastHopSamples = SAMPLE_RATE * 2;
+
+        for (int start = 0; start < waveform.length - WINDOW_SAMPLES; start += fastHopSamples) {
+            float[] chunk = Arrays.copyOfRange(waveform, start, start + WINDOW_SAMPLES);
+
+            // Run YAMNet (we only care about the embeddings output, index 0)
+            float[] frameEmbedding = getYamnetEmbeddings(chunk);
+
+            // Accumulate
+            for (int i = 0; i < embeddingDim; i++) {
+                sumEmbeddings[i] += frameEmbedding[i];
+            }
+            totalFrames++;
+        }
+
+        if (totalFrames == 0) return new float[0];
+
+        // 4. Divide by count to get Average
+        float[] avgEmbedding = new float[embeddingDim];
+        for (int i = 0; i < embeddingDim; i++) {
+            avgEmbedding[i] = sumEmbeddings[i] / totalFrames;
+        }
+
+        return avgEmbedding;
+    }
+
+    /**
      * Converts short[] -> float[], mixes down stereo to mono, and resamples.
      */
     private float[] convertAndResample(short[] inputShorts, int length, int inputRate, int channels, AnalysisProgressListener listener) {

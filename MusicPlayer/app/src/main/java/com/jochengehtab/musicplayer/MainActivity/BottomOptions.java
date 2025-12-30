@@ -35,41 +35,46 @@ public class BottomOptions {
         this.database = database;
     }
 
-    public void handleBottomOptions(ImageButton bottomOptionsButton, ImageButton bottomPlay, TextView bottomTitle) {
+    public void handleBottomOptions(ImageButton bottomOptionsButton) {
         bottomOptionsButton.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, bottomOptionsButton);
             popup.inflate(R.menu.bottom_bar_menu);
 
-            // 1. Set the group to be single-choice
             popup.getMenu().setGroupCheckable(R.id.group_playback_modes, true, true);
 
-            // 2. Pre-check the currently active mode
+            // Check current state to set the tick mark in the UI
             if (musicUtility.isLooping()) {
                 popup.getMenu().findItem(R.id.action_loop).setChecked(true);
             } else if (musicUtility.isMixing()) {
                 popup.getMenu().findItem(R.id.action_mix).setChecked(true);
+            } else if (musicUtility.isSmartMode()) {
+                popup.getMenu().findItem(R.id.action_smart_dj).setChecked(true);
             }
 
-            // 3. Handle menu item selections
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_loop) {
                     boolean isNowLooping = musicUtility.toggleLoop();
                     item.setChecked(isNowLooping);
-                    // Uncheck the other option if this one is now active
-                    if (isNowLooping) {
-                        popup.getMenu().findItem(R.id.action_mix).setChecked(false);
-                    }
-                    return true;
-
-                } else if (id == R.id.action_mix) {
-                    // Start shuffle playback on a background thread
-                    startShuffledPlayback(bottomPlay, bottomTitle);
-                    item.setChecked(true);
-                    // Uncheck the other option
-                    popup.getMenu().findItem(R.id.action_loop).setChecked(false);
                     return true;
                 }
+                else if (id == R.id.action_mix) {
+                    startShuffledPlayback();
+                    item.setChecked(true);
+                    return true;
+                }
+                else if (id == R.id.action_smart_dj) {
+                    boolean isSmartActive = musicUtility.toggleSmartMode();
+                    item.setChecked(isSmartActive);
+
+                    if (isSmartActive) {
+                        Toast.makeText(context, "Smart DJ Enabled: AI will pick next songs", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(context, "Smart DJ Disabled", Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                }
+
                 return false;
             });
 
@@ -77,17 +82,13 @@ public class BottomOptions {
         });
     }
 
-    /**
-     * Fetches the current playlist from the database and starts shuffled playback.
-     */
-    private void startShuffledPlayback(ImageButton bottomPlay, TextView bottomTitle) {
+    private void startShuffledPlayback() {
         if (playListName == null || playListName.isEmpty()) {
             Toast.makeText(context, "No playlist selected.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         executor.execute(() -> {
-            // Fetch tracks from the database in the background
             List<Track> playlistTracks;
             if (playListName.equals(ALL_TRACKS_PLAYLIST_NAME)) {
                 playlistTracks = database.trackDao().getAllTracks();
@@ -96,21 +97,12 @@ public class BottomOptions {
                 playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
             }
 
-            // Switch to the main thread to start playback and update UI
             handler.post(() -> {
                 if (playlistTracks.isEmpty()) {
                     Toast.makeText(context, "Playlist is empty, cannot shuffle.", Toast.LENGTH_SHORT).show();
                     return;
                 }
-
-                musicUtility.playList(playlistTracks, true); // true for shuffle
-
-                // Update the UI to reflect playback has started
-                bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                Track currentTrack = musicUtility.getCurrentTrack();
-                if (currentTrack != null) {
-                    bottomTitle.setText(currentTrack.title);
-                }
+                musicUtility.playList(playlistTracks, true);
             });
         });
     }

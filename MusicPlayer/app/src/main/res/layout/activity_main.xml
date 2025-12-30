@@ -6,21 +6,34 @@
     android:fitsSystemWindows="true"
     android:padding="16dp">
 
-    <!-- Search Icon -->
+    <!-- 1. NEW: Top Options Button (for Scan Library) -->
     <ImageButton
-        android:id="@+id/search_icon"
+        android:id="@+id/top_options_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Settings"
+        android:src="@drawable/ic_more_vert_white_24dp"
+        app:tint="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 2. CHANGED: Burger Menu (Moved to left of Options button) -->
+    <ImageButton
+        android:id="@+id/burger_menu"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/search"
-        android:src="@drawable/ic_search_white_24dp"
+        android:contentDescription="@string/menu"
+        android:src="@drawable/ic_menu_white_24dp"
         app:tint="@color/white"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/sort_button" />
+        app:layout_constraintEnd_toStartOf="@+id/top_options_button" />
 
-    <!-- Sort button -->
+    <!-- 3. CHANGED: Sort Button (Moved to left of Burger Menu) -->
     <ImageButton
         android:id="@+id/sort_button"
         android:layout_width="40dp"
@@ -34,20 +47,21 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/burger_menu" />
 
-    <!-- Burger menu button -->
+    <!-- 4. CHANGED: Search Icon (Moved to left of Sort Button) -->
     <ImageButton
-        android:id="@+id/burger_menu"
+        android:id="@+id/search_icon"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/menu"
-        android:src="@drawable/ic_menu_white_24dp"
+        android:contentDescription="@string/search"
+        android:src="@drawable/ic_search_white_24dp"
         app:tint="@color/white"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toStartOf="@+id/sort_button" />
 
+    <!-- ... Rest of your layout (SearchView, RecyclerView, BottomBar) remains the same ... -->
     <androidx.appcompat.widget.SearchView
         android:id="@+id/track_search_view"
         android:layout_width="0dp"
@@ -57,7 +71,7 @@
         android:visibility="gone"
         app:iconifiedByDefault="false"
         app:queryHint="Search Tracks..."
-        app:layout_constraintTop_toBottomOf="@id/search_icon"
+        app:layout_constraintTop_toBottomOf="@id/top_options_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

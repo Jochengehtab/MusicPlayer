@@ -1,6 +1,7 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +11,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,6 +36,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Dialog.PlaylistDialog;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
@@ -46,6 +49,7 @@ import com.jochengehtab.musicplayer.data.PlaylistTrackCrossRef;
 import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.data.Track;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -84,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         database = AppDatabase.getDatabase(this);
-        musicUtility = new MusicUtility(this, this::updateBottomTitle, this::updatePlayButtonIcon);
+        musicUtility = new MusicUtility(this, database, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         RecyclerView musicList = findViewById(R.id.musicList);
         bottomPlay = findViewById(R.id.bottom_play);
@@ -134,6 +138,75 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(noisyReceiver, intentFilter);
     }
 
+    private void analyzeAllTracks() {
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Smart DJ Setup");
+        progressDialog.setMessage("Analyzing library... This only happens once.");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            // 1. Load all tracks
+            AppDatabase db = AppDatabase.getDatabase(this);
+            List<Track> allTracks = db.trackDao().getAllTracks();
+
+            progressDialog.setMax(allTracks.size());
+
+            // 2. Initialize Classifier
+            AudioClassifier classifier = new AudioClassifier(this);
+
+            int count = 0;
+            int successCount = 0;
+
+            for (Track track : allTracks) {
+                count++;
+
+                // Update Progress UI
+                int finalCount = count;
+                runOnUiThread(() -> {
+                    progressDialog.setProgress(finalCount);
+                    progressDialog.setMessage("Analyzing: " + track.title);
+                });
+
+                // 3. Skip if already analyzed (Optimization)
+                if (track.embeddingVector != null && !track.embeddingVector.isEmpty()) {
+                    continue;
+                }
+
+                // 4. Analyze
+                float[] vector;
+                try {
+                    vector = classifier.getStyleEmbedding(Uri.parse(track.uri));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if (vector.length > 0) {
+                    // Convert float[] to String for DB
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < vector.length; i++) {
+                        if (i > 0) sb.append(",");
+                        sb.append(vector[i]);
+                    }
+                    track.embeddingVector = sb.toString();
+
+                    // 5. Save to DB
+                    db.trackDao().updateTrack(track);
+                    successCount++;
+                }
+            }
+
+            // 6. Finish
+            int finalSuccessCount = successCount;
+            runOnUiThread(() -> {
+                progressDialog.dismiss();
+                Toast.makeText(this, "Analysis Complete! " + finalSuccessCount + " new tracks analyzed.", Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+
     private void setupUI() {
         // Initialize the now-corrected helper classes
         bottomOptions = new BottomOptions(this, musicUtility, database);
@@ -141,7 +214,24 @@ public class MainActivity extends AppCompatActivity {
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
-        bottomOptions.handleBottomOptions(bottomOptionsButton, bottomPlay, bottomTitle);
+        bottomOptions.handleBottomOptions(bottomOptionsButton);
+
+
+        ImageButton topOptionsButton = findViewById(R.id.top_options_button);
+        topOptionsButton.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(MainActivity.this, topOptionsButton);
+            popup.getMenuInflater().inflate(R.menu.main_top_menu, popup.getMenu());
+
+            popup.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.action_scan_library) {
+                    // Call the method you already pasted in your code!
+                    analyzeAllTracks();
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
 
         final Animation slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in);
         final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
