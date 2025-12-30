@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.Music;
 
 import android.content.Context;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -167,7 +166,7 @@ public class MusicUtility {
 
     public void resume() {
         if (isInitialized() && !mediaPlayer.isPlaying()) return;
-        play(playQueue.get(currentIndex), onPlaybackStateListener);
+        //TODO proper resume with correct start and end
     }
 
     public synchronized Track getCurrentTrack() {
