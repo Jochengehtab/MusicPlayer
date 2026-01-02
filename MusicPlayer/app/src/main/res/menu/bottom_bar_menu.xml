@@ -6,17 +6,12 @@
         <item
             android:id="@+id/action_loop"
             android:checkable="true"
-            android:title="Loop Song" />
+            android:title="@string/loop" />
 
         <item
             android:id="@+id/action_mix"
             android:checkable="true"
-            android:title="Shuffle Mix" />
-
-        <item
-            android:id="@+id/action_smart_dj"
-            android:checkable="true"
-            android:title="Smart DJ (AI)" />
+            android:title="@string/mix" />
 
     </group>
 </menu>

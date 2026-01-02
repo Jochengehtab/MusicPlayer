@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,6 +44,8 @@ public class MusicUtility {
 
     // To handle Resume logic correctly
     private long currentActiveEndTime = 0;
+    private final LinkedList<Long> recentHistory = new LinkedList<>();
+    private static final int HISTORY_SIZE = 10; // Remember last 10 songs
 
     public MusicUtility(Context context, AppDatabase database, Consumer<String> updateBottomTitle, Runnable updateBottomPlayIcon) {
         this.context = context;
@@ -71,7 +74,10 @@ public class MusicUtility {
         cancelToken.set(false);
         mixEnabled = shouldMix;
         loopEnabled = false;
-        smartModeEnabled = false; // Reset smart mode on new playlist
+        smartModeEnabled = false;
+
+        // Clear history on new playlist to give a fresh start
+        recentHistory.clear();
 
         playQueue = new ArrayList<>(tracks);
         if (shouldMix) {
@@ -97,6 +103,8 @@ public class MusicUtility {
         Track track = playQueue.get(currentIndex);
         updateBottomTitle.accept(track.title);
 
+        addToHistory(track.id);
+
         if (isInitialized()) mediaPlayer.release();
         mediaPlayer = new MediaPlayer();
 
@@ -117,6 +125,17 @@ public class MusicUtility {
         } catch (IOException e) {
             Toast.makeText(context, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
             notifyListener(false);
+        }
+    }
+
+    // Helper to manage history size
+    private void addToHistory(long trackId) {
+        recentHistory.remove(trackId); // Move to end if played again
+        recentHistory.add(trackId);
+
+        // Keep history size limited
+        if (recentHistory.size() > HISTORY_SIZE) {
+            recentHistory.removeFirst(); // Remove oldest
         }
     }
 
@@ -160,24 +179,24 @@ public class MusicUtility {
 
         Track currentTrack = playQueue.get(currentIndex);
 
-        // Run heavy vector math in background
+        // Create a copy of the history to pass to the thread safely
+        List<Long> historySnapshot = new ArrayList<>(recentHistory);
+
         executor.execute(() -> {
             List<Track> allTracks = database.trackDao().getAllTracks();
-            Track nextTrack = MusicRecommendationEngine.findNextSong(currentTrack, allTracks);
+
+            // PASS HISTORY SNAPSHOT HERE
+            Track nextTrack = MusicRecommendationEngine.findNextSong(currentTrack, allTracks, historySnapshot);
 
             handler.post(() -> {
                 if (nextTrack != null) {
-                    // Add found song to the queue and play it
                     playQueue.add(nextTrack);
-                    currentIndex++;
-                    playCurrentQueueItem();
                 } else {
-                    Toast.makeText(context, "Smart DJ couldn't find a similar song (Are songs analyzed?)", Toast.LENGTH_LONG).show();
-                    // Fallback to normal behavior
+                    // Fallback
                     smartModeEnabled = false;
-                    currentIndex++;
-                    playCurrentQueueItem();
                 }
+                currentIndex++;
+                playCurrentQueueItem();
             });
         });
     }
@@ -243,11 +262,6 @@ public class MusicUtility {
             // If resume is called but player died, restart track
             playCurrentQueueItem();
         }
-    }
-
-    public synchronized Track getCurrentTrack() {
-        if (playQueue.isEmpty() || currentIndex >= playQueue.size()) return null;
-        return playQueue.get(currentIndex);
     }
 
     public boolean isPlaying() { return isInitialized() && mediaPlayer.isPlaying(); }

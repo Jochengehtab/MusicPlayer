@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.Manifest;
-import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +28,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.app.ActivityCompat;
@@ -49,7 +49,6 @@ import com.jochengehtab.musicplayer.data.PlaylistTrackCrossRef;
 import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.data.Track;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -139,73 +138,92 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void analyzeAllTracks() {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setTitle("Smart DJ Setup");
-        progressDialog.setMessage("Analyzing library... This only happens once.");
-        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        progressDialog.setCancelable(false);
+        // 1. Setup the Custom Dialog
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_library_scan, null);
+        TextView tvMessage = dialogView.findViewById(R.id.dialog_message);
+        TextView tvCount = dialogView.findViewById(R.id.dialog_count);
+        ProgressBar progressBar = dialogView.findViewById(R.id.dialog_progress_bar);
+
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setCancelable(false) // Prevent dismissal during scan
+                .create();
+
         progressDialog.show();
 
-        Executors.newSingleThreadExecutor().execute(() -> {
-            // 1. Load all tracks
-            AppDatabase db = AppDatabase.getDatabase(this);
-            List<Track> allTracks = db.trackDao().getAllTracks();
+        // 2. Create Executor
+        ExecutorService scanningExecutor = Executors.newSingleThreadExecutor();
 
-            progressDialog.setMax(allTracks.size());
+        scanningExecutor.execute(() -> {
+            try {
+                List<Track> allTracks = database.trackDao().getAllTracks();
 
-            // 2. Initialize Classifier
-            AudioClassifier classifier = new AudioClassifier(this);
+                // Initialize Classifier (Heavy object, create once)
+                AudioClassifier classifier = new AudioClassifier(this);
 
-            int count = 0;
-            int successCount = 0;
+                int total = allTracks.size();
+                int current = 0;
+                int successCount = 0;
 
-            for (Track track : allTracks) {
-                count++;
+                // Update Max Progress on UI
+                runOnUiThread(() -> progressBar.setMax(total));
 
-                // Update Progress UI
-                int finalCount = count;
+                for (Track track : allTracks) {
+                    current++;
+
+                    // Check for cancellation or issues
+                    if (Thread.currentThread().isInterrupted()) break;
+
+                    // UI Updates (Final variables for lambda)
+                    int finalCurrent = current;
+                    runOnUiThread(() -> {
+                        progressBar.setProgress(finalCurrent);
+                        tvMessage.setText("Analyzing: " + track.title);
+                        tvCount.setText(finalCurrent + " / " + total);
+                    });
+
+                    // Skip if already analyzed
+                    if (track.embeddingVector != null && !track.embeddingVector.isEmpty()) {
+                        continue;
+                    }
+
+                    // Perform Analysis
+                    float[] vector = classifier.getStyleEmbedding(Uri.parse(track.uri));
+
+                    if (vector.length > 0) {
+                        // Convert float[] to String
+                        // Using StringBuilder for maximum compatibility/performance in tight loops
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < vector.length; i++) {
+                            if (i > 0) sb.append(",");
+                            sb.append(vector[i]);
+                        }
+
+                        track.embeddingVector = sb.toString();
+                        database.trackDao().updateTrack(track);
+                        successCount++;
+                    }
+                }
+
+                // Completion UI
+                int finalSuccessCount = successCount;
                 runOnUiThread(() -> {
-                    progressDialog.setProgress(finalCount);
-                    progressDialog.setMessage("Analyzing: " + track.title);
+                    progressDialog.dismiss();
+                    Toast.makeText(this, "Analysis Complete! " + finalSuccessCount + " new tracks analyzed.", Toast.LENGTH_LONG).show();
                 });
 
-                // 3. Skip if already analyzed (Optimization)
-                if (track.embeddingVector != null && !track.embeddingVector.isEmpty()) {
-                    continue;
-                }
-
-                // 4. Analyze
-                float[] vector;
-                try {
-                    vector = classifier.getStyleEmbedding(Uri.parse(track.uri));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                if (vector.length > 0) {
-                    // Convert float[] to String for DB
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < vector.length; i++) {
-                        if (i > 0) sb.append(",");
-                        sb.append(vector[i]);
-                    }
-                    track.embeddingVector = sb.toString();
-
-                    // 5. Save to DB
-                    db.trackDao().updateTrack(track);
-                    successCount++;
-                }
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(this, "Error during analysis: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+                throw new RuntimeException(e);
+            } finally {
+                // 3. Clean up Executor
+                scanningExecutor.shutdown();
             }
-
-            // 6. Finish
-            int finalSuccessCount = successCount;
-            runOnUiThread(() -> {
-                progressDialog.dismiss();
-                Toast.makeText(this, "Analysis Complete! " + finalSuccessCount + " new tracks analyzed.", Toast.LENGTH_LONG).show();
-            });
         });
     }
-
 
     private void setupUI() {
         // Initialize the now-corrected helper classes
@@ -224,7 +242,6 @@ public class MainActivity extends AppCompatActivity {
 
             popup.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == R.id.action_scan_library) {
-                    // Call the method you already pasted in your code!
                     analyzeAllTracks();
                     return true;
                 }

@@ -47,23 +47,15 @@ public class BottomOptions {
                 popup.getMenu().findItem(R.id.action_loop).setChecked(true);
             } else if (musicUtility.isMixing()) {
                 popup.getMenu().findItem(R.id.action_mix).setChecked(true);
-            } else if (musicUtility.isSmartMode()) {
-                popup.getMenu().findItem(R.id.action_smart_dj).setChecked(true);
             }
 
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_loop) {
                     boolean isNowLooping = musicUtility.toggleLoop();
-                    item.setChecked(isNowLooping);
                     return true;
                 }
                 else if (id == R.id.action_mix) {
-                    startShuffledPlayback();
-                    item.setChecked(true);
-                    return true;
-                }
-                else if (id == R.id.action_smart_dj) {
                     boolean isSmartActive = musicUtility.toggleSmartMode();
                     item.setChecked(isSmartActive);
 
@@ -72,9 +64,11 @@ public class BottomOptions {
                     } else {
                         Toast.makeText(context, "Smart DJ Disabled", Toast.LENGTH_SHORT).show();
                     }
+
+                    // TODO
+                    //startShuffledPlayback();
                     return true;
                 }
-
                 return false;
             });
 
