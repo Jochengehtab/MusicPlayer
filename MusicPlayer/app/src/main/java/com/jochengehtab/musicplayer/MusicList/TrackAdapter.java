@@ -1,6 +1,5 @@
 package com.jochengehtab.musicplayer.MusicList;
 
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
@@ -54,7 +53,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
 
     public TrackAdapter(
             Context context,
-            List<Track> initialTracks,
             OnItemClickListener listener,
             MusicUtility musicUtility,
             AppDatabase database
@@ -62,7 +60,6 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         this.context = context;
         this.listener = listener;
         this.database = database;
-        this.tracks.addAll(initialTracks);
 
         this.trim = new Trim(context, musicUtility, database);
         this.rename = new Rename(context, database);
@@ -82,13 +79,14 @@ public class TrackAdapter extends RecyclerView.Adapter<TrackViewHolder> {
         Track current = tracks.get(position);
         holder.titleText.setText(current.title);
 
+        // Handle the case when the song is clicked directly
         holder.itemView.setOnClickListener(v -> listener.onItemClick(current));
 
         holder.overflowIcon.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(context, holder.overflowIcon);
             popup.inflate(R.menu.track_item_menu);
 
-            // Hide the "remove" option if we are in the main "All Tracks" list.
+            // Hide the remove option if we are in All Tracks list
             if (currentPlaylistName.equals(MainActivity.ALL_TRACKS_PLAYLIST_NAME)) {
                 popup.getMenu().findItem(R.id.action_remove).setVisible(false);
             }

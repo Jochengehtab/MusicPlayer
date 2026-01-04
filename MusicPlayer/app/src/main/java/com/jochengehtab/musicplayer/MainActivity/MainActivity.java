@@ -39,7 +39,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Dialog.PlaylistDialog;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
-import com.jochengehtab.musicplayer.Music.OnPlaybackStateListener;
+import com.jochengehtab.musicplayer.MusicList.OnItemClickListener;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.SortingOrder;
@@ -95,27 +95,16 @@ public class MainActivity extends AppCompatActivity {
         updateProgressBar = findViewById(R.id.update_progress_bar);
         searchView = findViewById(R.id.track_search_view);
 
-        OnPlaybackStateListener playbackListener = new OnPlaybackStateListener() {
-            @Override
-            public void onPlaybackStarted() {
-                runOnUiThread(MainActivity.this::updatePlayButtonIcon);
-            }
-
-            @Override
-            public void onPlaybackStopped() {
-                runOnUiThread(MainActivity.this::updatePlayButtonIcon);
-            }
+        // The track is just the parameter of the function 'onItemClick'
+        OnItemClickListener itemClickListener = track -> {
+            musicUtility.stopAndCancel();
+            bottomTitle.setText(track.title);
+            musicUtility.playTrack(track);
         };
 
         trackAdapter = new TrackAdapter(
                 this,
-                new ArrayList<>(),
-                track -> {
-                    musicUtility.stopAndCancel();
-                    bottomTitle.setText(track.title);
-                    bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
-                    musicUtility.play(track, playbackListener);
-                },
+                itemClickListener,
                 musicUtility,
                 database
         );
@@ -225,15 +214,21 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void handlePlayPauseClick() {
+        if (musicUtility.isPlaying()) {
+            musicUtility.pause();
+        } else {
+            musicUtility.resume();
+        }
+    }
+
     private void setupUI() {
-        // Initialize the now-corrected helper classes
-        bottomOptions = new BottomOptions(this, musicUtility, database);
+        bottomOptions = new BottomOptions(this, musicUtility);
         playlistDialog = new PlaylistDialog(this, database, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton);
-
 
         ImageButton topOptionsButton = findViewById(R.id.top_options_button);
         topOptionsButton.setOnClickListener(v -> {
@@ -478,17 +473,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void handlePlayPauseClick() {
-        if (musicUtility.isPlaying()) {
-            musicUtility.pause();
-        } else {
-            musicUtility.resume();
-        }
-        updatePlayButtonIcon();
-    }
-
     public void updatePlayButtonIcon() {
-        if (musicUtility.isPlaying()) {
+        updatePlayButtonIcon(musicUtility.isPlaying());
+    }
+    public void updatePlayButtonIcon(boolean setStopIcon) {
+        if (setStopIcon) {
             bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
         } else {
             bottomPlay.setImageResource(R.drawable.ic_play_arrow_white_24dp);
