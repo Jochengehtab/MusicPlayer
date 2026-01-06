@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.data.AppDatabase;
@@ -53,6 +52,7 @@ public class MusicUtility {
             mediaPlayer.reset();
         }
 
+        addToHistory(track.id);
         cancelToken.set(false);
         currentTrack = track;
 
@@ -82,14 +82,13 @@ public class MusicUtility {
 
     private synchronized void playCurrentQueueItem(long... timespan) {
         if (cancelToken.get()) return;
-        
+
         Track track;
         if (loopEnabled) {
             track = currentTrack;
         } else {
             track = playQueue.get(currentIndex);
             updateBottomTitle.accept(track.title);
-            addToHistory(track.id);
         }
         playTrack(track, timespan);
     }
@@ -98,7 +97,6 @@ public class MusicUtility {
         loopEnabled = true;
     }
 
-    // TODO check if the songs are correctly added to the playing history
     public void handleMix(String playListName) {
         cancelToken.set(false);
         loopEnabled = false;
@@ -140,7 +138,6 @@ public class MusicUtility {
                 updateBottomPlayIcon.accept(false);
                 if (loopEnabled) {
                     // Replay same song
-                    Log.i("Looooo", "Looop:(2");
                     playCurrentQueueItem();
                 } else {
                     findAndPlayNextSong(true);
@@ -215,10 +212,19 @@ public class MusicUtility {
     public void resume() {
         if (!isInitialized()) return;
 
-        // TODO optimize
-        playTrack(mediaPlayer.getCurrentTrack(), mediaPlayer.getStartTime(), mediaPlayer.getEndTime());
+        // If the player is already prepared (just paused),
+        // simply start it and schedule the stop.
+        // This prevents re-buffering and prevents re-adding the song to history.
+        long remainingTime = mediaPlayer.getEndTime() - mediaPlayer.getCurrentPosition();
 
-        updateBottomPlayIcon.accept(true);
+        if (remainingTime > 0) {
+            mediaPlayer.start();
+            scheduleStop(remainingTime, mediaPlayer);
+            updateBottomPlayIcon.accept(true);
+        } else {
+            // Edge case: If we resumed at the very end of the song, play next
+            findAndPlayNextSong(true);
+        }
     }
 
     // Helper to manage history size

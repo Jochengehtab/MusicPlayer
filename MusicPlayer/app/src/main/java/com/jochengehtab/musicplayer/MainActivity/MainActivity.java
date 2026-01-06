@@ -150,91 +150,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void analyzeAllTracks() {
-        // 1. Setup the Custom Dialog
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_library_scan, null);
-        TextView tvMessage = dialogView.findViewById(R.id.dialog_message);
-        TextView tvCount = dialogView.findViewById(R.id.dialog_count);
-        ProgressBar progressBar = dialogView.findViewById(R.id.dialog_progress_bar);
-
-        AlertDialog progressDialog = new AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setCancelable(false) // Prevent dismissal during scan
-                .create();
-
-        progressDialog.show();
-
-        // 2. Create Executor
-        ExecutorService scanningExecutor = Executors.newSingleThreadExecutor();
-
-        scanningExecutor.execute(() -> {
-            try {
-                List<Track> allTracks = database.trackDao().getAllTracks();
-
-                int total = allTracks.size();
-                int current = 0;
-                int successCount = 0;
-
-                // Update Max Progress on UI
-                runOnUiThread(() -> progressBar.setMax(total));
-
-                for (Track track : allTracks) {
-                    current++;
-
-                    // Check for cancellation or issues
-                    if (Thread.currentThread().isInterrupted()) break;
-
-                    // UI Updates (Final variables for lambda)
-                    int finalCurrent = current;
-                    runOnUiThread(() -> {
-                        progressBar.setProgress(finalCurrent);
-                        tvMessage.setText("Analyzing: " + track.title);
-                        tvCount.setText(finalCurrent + " / " + total);
-                    });
-
-                    // Skip if already analyzed
-                    if (track.embeddingVector != null && !track.embeddingVector.isEmpty()) {
-                        continue;
-                    }
-
-                    // Perform Analysis
-                    float[] vector = classifier.getStyleEmbedding(Uri.parse(track.uri));
-
-                    if (vector.length > 0) {
-                        // Convert float[] to String
-                        // Using StringBuilder for maximum compatibility/performance in tight loops
-                        StringBuilder sb = new StringBuilder();
-                        for (int i = 0; i < vector.length; i++) {
-                            if (i > 0) sb.append(",");
-                            sb.append(vector[i]);
-                        }
-
-                        track.embeddingVector = sb.toString();
-                        database.trackDao().updateTrack(track);
-                        successCount++;
-                    }
-                }
-
-                // Completion UI
-                int finalSuccessCount = successCount;
-                runOnUiThread(() -> {
-                    progressDialog.dismiss();
-                    Toast.makeText(this, "Analysis Complete! " + finalSuccessCount + " new tracks analyzed.", Toast.LENGTH_LONG).show();
-                });
-
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    progressDialog.dismiss();
-                    Toast.makeText(this, "Error during analysis: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                });
-                throw new RuntimeException(e);
-            } finally {
-                // 3. Clean up Executor
-                scanningExecutor.shutdown();
-            }
-        });
-    }
-
     private void handlePlayPauseClick() {
         if (musicUtility.isPlaying()) {
             musicUtility.pause();
@@ -250,21 +165,6 @@ public class MainActivity extends AppCompatActivity {
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
         bottomOptions.handleBottomOptions(bottomOptionsButton);
-
-        ImageButton topOptionsButton = findViewById(R.id.top_options_button);
-        topOptionsButton.setOnClickListener(v -> {
-            PopupMenu popup = new PopupMenu(MainActivity.this, topOptionsButton);
-            popup.getMenuInflater().inflate(R.menu.main_top_menu, popup.getMenu());
-
-            popup.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == R.id.action_scan_library) {
-                    analyzeAllTracks();
-                    return true;
-                }
-                return false;
-            });
-            popup.show();
-        });
 
         final Animation slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_fade_in);
         final Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_fade_out);
