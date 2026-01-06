@@ -36,4 +36,20 @@ public class MediaPlayer extends android.media.MediaPlayer {
     public void setCurrentTrack(Track currentTrack) {
         this.currentTrack = currentTrack;
     }
+
+    @Override
+    public void reset() {
+        super.reset();
+        this.currentTrack = null;
+        this.startTime = 0;
+        this.endTime = 0;
+    }
+
+    @Override
+    public void release() {
+        super.release();
+        currentTrack = null;
+        startTime = 0;
+        endTime = 0;
+    }
 }

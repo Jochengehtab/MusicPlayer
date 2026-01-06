@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final BecomingNoisyReceiver noisyReceiver = new BecomingNoisyReceiver();
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private AudioClassifier classifier;
     private MusicUtility musicUtility;
     private TrackAdapter trackAdapter;
     private TextView bottomTitle;
@@ -74,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
     private List<Track> currentlyDisplayedTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
     private BottomOptions bottomOptions;
-    private SortingOrder currentSortOrder = SortingOrder.A_TO_Z;
+    private SortingOrder currentSortOrder = SortingOrder.MOST_RECENT;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
     private ProgressBar updateProgressBar;
     private AppDatabase database;
@@ -87,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         database = AppDatabase.getDatabase(this);
+        // TODO check where i should initialize that because it is an heavy object
+        classifier = new AudioClassifier(this);
         musicUtility = new MusicUtility(this, database, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         RecyclerView musicList = findViewById(R.id.musicList);
@@ -97,7 +100,6 @@ public class MainActivity extends AppCompatActivity {
 
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
-            musicUtility.stopAndCancel();
             bottomTitle.setText(track.title);
             musicUtility.playTrack(track);
         };
@@ -126,6 +128,28 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(noisyReceiver, intentFilter);
     }
 
+    private void analyzeTrack(Track track) {
+        // Return if already analyzed
+        if (track.embeddingVector != null && !track.embeddingVector.isEmpty()) {
+            return;
+        }
+
+        // Perform Analysis
+        float[] vector = classifier.getStyleEmbedding(Uri.parse(track.uri));
+
+        if (vector.length > 0) {
+            // Convert float[] to String
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < vector.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(vector[i]);
+            }
+
+            track.embeddingVector = sb.toString();
+            database.trackDao().updateTrack(track);
+        }
+    }
+
     private void analyzeAllTracks() {
         // 1. Setup the Custom Dialog
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_library_scan, null);
@@ -146,9 +170,6 @@ public class MainActivity extends AppCompatActivity {
         scanningExecutor.execute(() -> {
             try {
                 List<Track> allTracks = database.trackDao().getAllTracks();
-
-                // Initialize Classifier (Heavy object, create once)
-                AudioClassifier classifier = new AudioClassifier(this);
 
                 int total = allTracks.size();
                 int current = 0;
@@ -224,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupUI() {
         bottomOptions = new BottomOptions(this, musicUtility);
-        playlistDialog = new PlaylistDialog(this, database, this::loadPlaylistAndPlay, this::loadAndShowPlaylist);
+        playlistDialog = new PlaylistDialog(this, database, this::loadAndShowPlaylist);
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
         ImageButton bottomOptionsButton = findViewById(R.id.bottom_options);
@@ -440,42 +461,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
-    private void loadPlaylistAndPlay(String playlistName) {
-        currentPlaylistName = playlistName;
-
-        // Update the state of helper classes
-        bottomOptions.setPlaylistName(playlistName);
-        trackAdapter.setCurrentPlaylistName(playlistName);
-
-        executor.execute(() -> {
-            PlaylistWithTracks pwt = database.playlistDao().getPlaylistWithTracks(playlistName);
-            List<Track> playlistTracks = (pwt != null) ? pwt.tracks : new ArrayList<>();
-
-            if (currentSortOrder == SortingOrder.A_TO_Z) {
-                playlistTracks.sort((t1, t2) -> t1.title.compareToIgnoreCase(t2.title));
-            } else {
-                playlistTracks.sort((t1, t2) -> Long.compare(t2.dateModified, t1.dateModified));
-            }
-
-            currentlyDisplayedTracks = new ArrayList<>(playlistTracks);
-
-            handler.post(() -> {
-                trackAdapter.updateList(currentlyDisplayedTracks);
-                if (!playlistTracks.isEmpty()) {
-                    musicUtility.playList(playlistTracks, false);
-                    updatePlayButtonIcon();
-                    Toast.makeText(MainActivity.this, "Playing: " + playlistName, Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Playlist '" + playlistName + "' is empty.", Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-    }
-
     public void updatePlayButtonIcon() {
         updatePlayButtonIcon(musicUtility.isPlaying());
     }
+
     public void updatePlayButtonIcon(boolean setStopIcon) {
         if (setStopIcon) {
             bottomPlay.setImageResource(R.drawable.ic_stop_white_24dp);
@@ -517,7 +506,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        musicUtility.stopAndCancel();
+        musicUtility.destroy();
         unregisterReceiver(noisyReceiver);
         executor.shutdown();
     }

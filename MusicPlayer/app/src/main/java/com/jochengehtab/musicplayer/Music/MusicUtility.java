@@ -4,9 +4,11 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.data.AppDatabase;
+import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.data.Track;
 
 import java.io.File;
@@ -22,19 +24,20 @@ import java.util.function.Consumer;
 
 public class MusicUtility {
     private static final int HISTORY_SIZE = 10; // Remember last 10 songs
+    private int currentIndex = 0;
+    private boolean loopEnabled = false;
+    private boolean mixEnabled = false;
     private final Context context;
     private final AppDatabase database;
+    private MediaPlayer mediaPlayer;
+    private Track currentTrack;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
     private final Consumer<String> updateBottomTitle;
     private final Consumer<Boolean> updateBottomPlayIcon;
+    private final List<Track> playQueue = new ArrayList<>();
     private final LinkedList<Long> recentHistory = new LinkedList<>();
-    private MediaPlayer mediaPlayer;
-    private boolean loopEnabled = false;
-    private boolean mixEnabled = false;
-    private List<Track> playQueue = new ArrayList<>();
-    private int currentIndex = 0;
 
     public MusicUtility(Context context, AppDatabase database, Consumer<String> updateBottomTitle, Consumer<Boolean> updateBottomPlayIcon) {
         this.context = context;
@@ -44,8 +47,14 @@ public class MusicUtility {
     }
 
     public void playTrack(Track track, long... timespan) {
-        if (isInitialized()) mediaPlayer.release();
-        mediaPlayer = new MediaPlayer();
+        if (mediaPlayer == null) {
+            mediaPlayer = new MediaPlayer();
+        } else {
+            mediaPlayer.reset();
+        }
+
+        cancelToken.set(false);
+        currentTrack = track;
 
         long startMs = (timespan != null && timespan.length >= 1) ? timespan[0] : track.startTime;
         long endMs = (timespan != null && timespan.length >= 2) ? timespan[1] : track.endTime;
@@ -71,64 +80,53 @@ public class MusicUtility {
         updateBottomPlayIcon.accept(true);
     }
 
-    public synchronized void playList(List<Track> musicFiles, boolean shouldMix) {
-        if (musicFiles == null || musicFiles.isEmpty()) {
-            Toast.makeText(context, "Playlist is empty.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        setupQueue(musicFiles, shouldMix);
-        playCurrentQueueItem();
-    }
-
     private synchronized void playCurrentQueueItem(long... timespan) {
         if (cancelToken.get()) return;
-
-        // Boundary Check
-        if (currentIndex >= playQueue.size()) {
-            if (loopEnabled && !playQueue.isEmpty()) {
-                currentIndex = 0;
-            } else {
-                stopAndCancel();
-                updateBottomPlayIcon.accept(isPlaying());
-                return;
-            }
+        
+        Track track;
+        if (loopEnabled) {
+            track = currentTrack;
+        } else {
+            track = playQueue.get(currentIndex);
+            updateBottomTitle.accept(track.title);
+            addToHistory(track.id);
         }
-
-        Track track = playQueue.get(currentIndex);
-        updateBottomTitle.accept(track.title);
-
-        addToHistory(track.id);
         playTrack(track, timespan);
     }
 
     public void handleLooping() {
-        loopEnabled = !loopEnabled;
+        loopEnabled = true;
     }
 
+    // TODO check if the songs are correctly added to the playing history
     public void handleMix(String playListName) {
-
-        // First check if we have a track currently playing
-        if (isPlaying()) {
-            findAndPlayNextSong();
-        } else {
-            Collections.shuffle(playQueue);
-            playCurrentQueueItem();
-        }
-    }
-
-    private void setupQueue(List<Track> tracks, boolean shouldMix) {
         cancelToken.set(false);
-        mixEnabled = shouldMix;
         loopEnabled = false;
-
-        // Clear history on new playlist to give a fresh start
-        recentHistory.clear();
-
-        playQueue = new ArrayList<>(tracks);
-        if (shouldMix) {
+        if (isPlaying()) {
+            mixEnabled = true;
+            playQueue.clear();
+            playQueue.add(mediaPlayer.getCurrentTrack());
+            // Since the queue only has one item
+            currentIndex = 0;
+            findAndPlayNextSong(false);
+        } else if (!playQueue.isEmpty()) {
             Collections.shuffle(playQueue);
+            currentIndex = 0;
+            playCurrentQueueItem();
+        } else {
+            executor.execute(() -> {
+                PlaylistWithTracks playlistWithTracks = database.playlistDao().getPlaylistWithTracks(playListName);
+                if (playlistWithTracks != null && !playlistWithTracks.tracks.isEmpty()) {
+                    List<Track> tracks = playlistWithTracks.tracks;
+                    Collections.shuffle(tracks);
+                    handler.post(() -> {
+                        playQueue.addAll(tracks);
+                        currentIndex = 0;
+                        playCurrentQueueItem();
+                    });
+                }
+            });
         }
-        currentIndex = 0;
     }
 
     private void scheduleStop(long delayMs, MediaPlayer targetMp) {
@@ -142,18 +140,21 @@ public class MusicUtility {
                 updateBottomPlayIcon.accept(false);
                 if (loopEnabled) {
                     // Replay same song
+                    Log.i("Looooo", "Looop:(2");
                     playCurrentQueueItem();
                 } else {
-                    findAndPlayNextSong();
+                    findAndPlayNextSong(true);
                 }
             }
         }, delayMs);
     }
 
     /**
-     * Looks at the current song, queries DB for the most similar one, and plays it.
+     * @param playImmediately
+     *   true = Normal behavior (End of song -> Play next).
+     *   false = Mix start behavior (Just add to queue, don't stop current song).
      */
-    private void findAndPlayNextSong() {
+    private void findAndPlayNextSong(boolean playImmediately) {
         if (playQueue.isEmpty()) return;
 
         Track currentTrack = playQueue.get(currentIndex);
@@ -170,8 +171,13 @@ public class MusicUtility {
                 if (nextTrack != null) {
                     playQueue.add(nextTrack);
                 }
-                currentIndex++;
-                playCurrentQueueItem();
+
+                // Only increment and play if requested.
+                // Otherwise, we just successfully buffered the next song.
+                if (playImmediately) {
+                    currentIndex++;
+                    playCurrentQueueItem();
+                }
             });
         });
     }
@@ -181,10 +187,21 @@ public class MusicUtility {
         handler.removeCallbacksAndMessages(null);
         if (isInitialized()) {
             if (mediaPlayer.isPlaying()) mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
+            mediaPlayer.reset();
         }
         mixEnabled = false;
+    }
+
+    /**
+     * This is required because stopAndCancel() no longer releases memory.
+     */
+    public synchronized void destroy() {
+        cancelToken.set(true);
+        handler.removeCallbacksAndMessages(null);
+        if (mediaPlayer != null) {
+            mediaPlayer.release(); // Actually free native memory
+            mediaPlayer = null;
+        }
     }
 
     public void pause() {
@@ -197,6 +214,8 @@ public class MusicUtility {
 
     public void resume() {
         if (!isInitialized()) return;
+
+        // TODO optimize
         playTrack(mediaPlayer.getCurrentTrack(), mediaPlayer.getStartTime(), mediaPlayer.getEndTime());
 
         updateBottomPlayIcon.accept(true);

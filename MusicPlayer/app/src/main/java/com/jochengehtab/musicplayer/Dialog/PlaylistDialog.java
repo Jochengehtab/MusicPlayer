@@ -30,7 +30,6 @@ public class PlaylistDialog {
 
     private final Context context;
     private final AppDatabase database;
-    private final Consumer<String> loadPlaylistAndPlay;
     private final Consumer<String> loadAndShowPlaylist;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -43,10 +42,9 @@ public class PlaylistDialog {
     private final RecyclerView playlistRv;
     private final EditText createPlaylistInput;
 
-    public PlaylistDialog(Context context, AppDatabase database, Consumer<String> loadPlaylistAndPlay, Consumer<String> loadAndShowPlaylist) {
+    public PlaylistDialog(Context context, AppDatabase database, Consumer<String> loadAndShowPlaylist) {
         this.context = context;
         this.database = database;
-        this.loadPlaylistAndPlay = loadPlaylistAndPlay;
         this.loadAndShowPlaylist = loadAndShowPlaylist;
 
         View playlistDialogView = LayoutInflater.from(context).inflate(R.layout.dialog_playlist_selector, null);
@@ -127,7 +125,7 @@ public class PlaylistDialog {
                     @Override
                     public void onPlayClicked(String playlistName) {
                         playlistDialog.dismiss();
-                        loadPlaylistAndPlay.accept(playlistName);
+                        // TODO
                     }
 
                     @Override
