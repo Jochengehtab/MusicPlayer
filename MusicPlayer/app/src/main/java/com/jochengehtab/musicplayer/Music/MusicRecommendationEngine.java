@@ -9,7 +9,9 @@ import java.util.stream.Collectors;
 
 public class MusicRecommendationEngine {
 
-    private static final Random random = new Random();
+    private record ScoredTrack(Track track, double score) {}
+
+    private final Random random = new Random();
 
     /**
      * Finds a suitable next song.
@@ -19,7 +21,7 @@ public class MusicRecommendationEngine {
      * 3. Filter out songs currently in the 'recentHistory'.
      * 4. Pick a random song from the top 5 remaining candidates.
      */
-    public static Track findNextSong(Track currentTrack, List<Track> allTracks, List<Long> recentHistory) {
+    public Track findNextSong(Track currentTrack, List<Track> allTracks, List<Long> recentHistory) {
         float[] currentVector = currentTrack.getStyleVector();
         if (currentVector == null) return null;
 
@@ -61,7 +63,7 @@ public class MusicRecommendationEngine {
         return candidates.get(randomIndex).track;
     }
 
-    private static double cosineSimilarity(float[] vectorA, float[] vectorB) {
+    private double cosineSimilarity(float[] vectorA, float[] vectorB) {
         double dotProduct = 0.0;
         double normA = 0.0;
         double normB = 0.0;
@@ -75,16 +77,5 @@ public class MusicRecommendationEngine {
 
         if (normA == 0 || normB == 0) return 0;
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-    }
-
-    // Helper class to store track and its score temporarily
-    private static class ScoredTrack {
-        Track track;
-        double score;
-
-        ScoredTrack(Track track, double score) {
-            this.track = track;
-            this.score = score;
-        }
     }
 }

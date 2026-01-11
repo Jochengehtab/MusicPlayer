@@ -435,8 +435,6 @@ public class AudioClassifier {
 
     /**
      * Extracts a 1024-dimensional feature embedding from the given audio URI.
-     * <p>
-     * Optimization: Probes the file at 5 distinct intervals rather than decoding fully.
      *
      * @return The averaged embedding vector, or an empty array on failure.
      */

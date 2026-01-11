@@ -33,6 +33,7 @@ public class MusicUtility {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
+    private final MusicRecommendationEngine musicRecommendationEngine = new MusicRecommendationEngine();
     private final Consumer<String> updateBottomTitle;
     private final Consumer<Boolean> updateBottomPlayIcon;
     private final List<Track> playQueue = new ArrayList<>();
@@ -162,7 +163,7 @@ public class MusicUtility {
         executor.execute(() -> {
             List<Track> allTracks = database.trackDao().getAllTracks();
 
-            Track nextTrack = MusicRecommendationEngine.findNextSong(currentTrack, allTracks, historySnapshot);
+            Track nextTrack = musicRecommendationEngine.findNextSong(currentTrack, allTracks, historySnapshot);
 
             handler.post(() -> {
                 if (nextTrack != null) {
