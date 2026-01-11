@@ -438,12 +438,14 @@ public class AudioClassifier {
      *
      * @return The averaged embedding vector, or an empty array on failure.
      */
-    public float[] getStyleEmbedding(Uri audioUri) {
+    public float[] getStyleEmbedding(Uri audioUri, AnalysisProgressListener listener) {
         MediaExtractor extractor = new MediaExtractor();
         MediaCodec codec = null;
         ParcelFileDescriptor pfd = null;
 
         try {
+            if (listener != null) listener.onProgress(0, "Preparing...");
+
             // 1. Setup Data Source
             if (audioUri.getScheme() == null) {
                 File file = new File(Objects.requireNonNull(audioUri.getPath()));
@@ -453,7 +455,7 @@ public class AudioClassifier {
             if (pfd == null) return new float[0];
             extractor.setDataSource(pfd.getFileDescriptor());
 
-            // 2. Select Track & Configure Codec
+            // 2. Select Track
             int trackIndex = selectAudioTrack(extractor);
             if (trackIndex < 0) return new float[0];
             extractor.selectTrack(trackIndex);
@@ -467,8 +469,7 @@ public class AudioClassifier {
             codec.configure(format, null, null, 0);
             codec.start();
 
-            // 3. Define Probes (Where to look)
-            // If song is short (< 10s), just read start. Else probe 5 spots.
+            // 3. Define Probes
             long[] probePoints;
             if (durationUs < 10_000_000) {
                 probePoints = new long[]{0};
@@ -486,27 +487,31 @@ public class AudioClassifier {
             int validProbes = 0;
 
             // 4. Probe Loop
-            for (long seekTime : probePoints) {
-                // Seek to the point
-                extractor.seekTo(seekTime, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
-                codec.flush(); // Essential after seek
+            for (int i = 0; i < probePoints.length; i++) {
+                long seekTime = probePoints[i];
 
-                // Decode ~1.5 seconds of audio from this point
+                // Update Progress
+                if (listener != null) {
+                    int percent = (int) (((float) i / probePoints.length) * 100);
+                    listener.onProgress(percent, "Scanning segment " + (i + 1));
+                }
+
+                extractor.seekTo(seekTime, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                codec.flush();
+
                 float[] snippet = decodeSnippet(extractor, codec, format);
 
-                // If we got enough data, analyze it
                 if (snippet.length >= WINDOW_SAMPLES) {
-                    // Take exact window size
                     float[] window = Arrays.copyOf(snippet, WINDOW_SAMPLES);
                     float[] features = getYamnetEmbeddings(window);
-
-                    // Accumulate
-                    for (int i = 0; i < 1024; i++) {
-                        sumEmbeddings[i] += features[i];
+                    for (int j = 0; j < 1024; j++) {
+                        sumEmbeddings[j] += features[j];
                     }
                     validProbes++;
                 }
             }
+
+            if (listener != null) listener.onProgress(100, "Done");
 
             if (validProbes == 0) return new float[0];
 
