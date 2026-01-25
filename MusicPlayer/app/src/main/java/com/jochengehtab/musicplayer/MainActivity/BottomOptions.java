@@ -31,17 +31,14 @@ public class BottomOptions {
                 popup.getMenu().findItem(R.id.action_mix).setChecked(true);
             }
 
-            // TODO investigate what item.setChecked does here becasue i think the ui stuff should be handled above
             popup.setOnMenuItemClickListener(item -> {
                 int id = item.getItemId();
                 if (id == R.id.action_loop) {
                     musicUtility.handleLooping();
-                    item.setChecked(true);
                     return true;
                 }
                 else if (id == R.id.action_mix) {
                     musicUtility.handleMix(playListName);
-                    item.setChecked(true);
                     return true;
                 }
                 return false;

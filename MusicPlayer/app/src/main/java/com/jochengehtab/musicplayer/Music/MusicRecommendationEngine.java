@@ -1,5 +1,7 @@
 package com.jochengehtab.musicplayer.Music;
 
+import android.util.Log;
+
 import com.jochengehtab.musicplayer.data.Track;
 
 import java.util.ArrayList;
@@ -60,22 +62,21 @@ public class MusicRecommendationEngine {
 
         // Pick a random index from 0 to poolSize
         int randomIndex = random.nextInt(poolSize);
+        Log.i("Next Song", candidates.get(randomIndex).track.title);
+        for (ScoredTrack t : candidates) {
+            Log.i("Candidates", t.track.title + " Similarity" + t.score);
+        }
         return candidates.get(randomIndex).track;
     }
 
+    // If you implement the re-normalization in AudioClassifier, use this:
     private double cosineSimilarity(float[] vectorA, float[] vectorB) {
         double dotProduct = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-        int length = Math.min(vectorA.length, vectorB.length);
-
-        for (int i = 0; i < length; i++) {
+        // We assume vectors are already normalized to length 1.0
+        // This removes the need for expensive Math.sqrt calls during the loop
+        for (int i = 0; i < vectorA.length; i++) {
             dotProduct += vectorA[i] * vectorB[i];
-            normA += Math.pow(vectorA[i], 2);
-            normB += Math.pow(vectorB[i], 2);
         }
-
-        if (normA == 0 || normB == 0) return 0;
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        return dotProduct;
     }
 }

@@ -34,13 +34,14 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
-
-    aaptOptions {
-        noCompress "tflite"
+    androidResources {
+        noCompress 'tflite'
     }
+
 }
 
 dependencies {
+    implementation "androidx.media:media:1.7.1"
     implementation 'org.pytorch:executorch-android:1.0.1'
     implementation 'com.facebook.fbjni:fbjni:0.7.0'
     implementation 'com.facebook.soloader:soloader:0.12.1'

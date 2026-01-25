@@ -4,6 +4,10 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.jochengehtab.musicplayer.data.AppDatabase;
@@ -13,6 +17,7 @@ import com.jochengehtab.musicplayer.data.Track;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,7 +34,7 @@ public class MusicUtility {
     private final Context context;
     private final AppDatabase database;
     private MediaPlayer mediaPlayer;
-    private Track currentTrack;
+    private MediaSessionCompat mediaSession;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
@@ -44,6 +49,55 @@ public class MusicUtility {
         this.database = database;
         this.updateBottomTitle = updateBottomTitle;
         this.updateBottomPlayIcon = updateBottomPlayIcon;
+        initMediaSession();
+    }
+
+    private void initMediaSession() {
+        mediaSession = new MediaSessionCompat(context, "MusicUtilitySession");
+        
+        mediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                resume();
+            }
+
+            @Override
+            public void onPause() {
+                pause();
+            }
+
+            @Override
+            public void onSkipToNext() {
+                // Stop current handler to prevent the scheduled stop from firing later
+                handler.removeCallbacksAndMessages(null);
+
+                if (isInitialized() && mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                }
+
+                updateBottomPlayIcon.accept(false);
+
+                // Force next song logic
+                findAndPlayNextSong(true);
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                // Stop any pending auto-next timers
+                handler.removeCallbacksAndMessages(null);
+
+                // Logic: Actually go to previous track
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    playCurrentQueueItem();
+                } else {
+                    // If we are at the very first song (index 0), just restart it
+                    playCurrentQueueItem();
+                }
+            }
+        });
+
+        mediaSession.setActive(true);
     }
 
     public void playTrack(Track track, long... timespan) {
@@ -53,9 +107,25 @@ public class MusicUtility {
             mediaPlayer.reset();
         }
 
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Track elemnt : playQueue) {
+            stringBuilder.append(elemnt.title);
+            stringBuilder.append("; ");
+        }
+        Log.i("Play Queue", String.valueOf(stringBuilder));
+
+        updateMediaSessionState(PlaybackStateCompat.STATE_PLAYING);
+
+        // Update Metadata
+        MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
+                .build();
+        mediaSession.setMetadata(metadata);
+
         addToHistory(track.id);
         cancelToken.set(false);
-        currentTrack = track;
 
         long startMs = (timespan != null && timespan.length >= 1) ? timespan[0] : track.startTime;
         long endMs = (timespan != null && timespan.length >= 2) ? timespan[1] : track.endTime;
@@ -86,7 +156,7 @@ public class MusicUtility {
 
         Track track;
         if (loopEnabled) {
-            track = currentTrack;
+            track = mediaPlayer.getCurrentTrack();
         } else {
             track = playQueue.get(currentIndex);
             updateBottomTitle.accept(track.title);
@@ -128,6 +198,21 @@ public class MusicUtility {
         }
     }
 
+    private void updateMediaSessionState(int state) {
+        if (mediaSession == null) return;
+
+        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder()
+                .setActions(
+                        PlaybackStateCompat.ACTION_PLAY |
+                                PlaybackStateCompat.ACTION_PAUSE |
+                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                                PlaybackStateCompat.ACTION_PLAY_PAUSE
+                );
+
+        stateBuilder.setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+        mediaSession.setPlaybackState(stateBuilder.build());
+    }
+
     private void scheduleStop(long delayMs, MediaPlayer targetMp) {
         // Clear the handler
         handler.removeCallbacksAndMessages(null);
@@ -155,15 +240,13 @@ public class MusicUtility {
     private void findAndPlayNextSong(boolean playImmediately) {
         if (playQueue.isEmpty()) return;
 
-        Track currentTrack = playQueue.get(currentIndex);
-
         // Create a copy of the history to pass to the thread safely
         List<Long> historySnapshot = new ArrayList<>(recentHistory);
 
         executor.execute(() -> {
             List<Track> allTracks = database.trackDao().getAllTracks();
 
-            Track nextTrack = musicRecommendationEngine.findNextSong(currentTrack, allTracks, historySnapshot);
+            Track nextTrack = musicRecommendationEngine.findNextSong(mediaPlayer.getCurrentTrack(), allTracks, historySnapshot);
 
             handler.post(() -> {
                 if (nextTrack != null) {
@@ -200,6 +283,13 @@ public class MusicUtility {
             mediaPlayer.release(); // Actually free native memory
             mediaPlayer = null;
         }
+
+        // Release Media Session
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+            mediaSession = null;
+        }
     }
 
     public void pause() {
@@ -208,6 +298,9 @@ public class MusicUtility {
         mediaPlayer.setStartTime(mediaPlayer.getCurrentPosition());
         handler.removeCallbacksAndMessages(null);
         updateBottomPlayIcon.accept(false);
+
+        // Update Session State
+        updateMediaSessionState(PlaybackStateCompat.STATE_PAUSED);
     }
 
     public void resume() {
@@ -226,10 +319,19 @@ public class MusicUtility {
             // Edge case: If we resumed at the very end of the song, play next
             findAndPlayNextSong(true);
         }
+
+        // Update Session State
+        updateMediaSessionState(PlaybackStateCompat.STATE_PLAYING);
     }
 
     // Helper to manage history size
     private void addToHistory(long trackId) {
+
+        // Check if the entry already exists in the history
+        if (recentHistory.contains(trackId)) {
+            return;
+        }
+
         recentHistory.remove(trackId); // Move to end if played again
         recentHistory.add(trackId);
 
