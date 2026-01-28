@@ -1,7 +1,5 @@
 package com.jochengehtab.musicplayer.MusicList;
 
-// Import the new Track entity from the data package
-
 import com.jochengehtab.musicplayer.data.Track;
 
 /**

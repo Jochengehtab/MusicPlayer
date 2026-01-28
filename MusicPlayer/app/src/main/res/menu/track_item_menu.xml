@@ -18,4 +18,7 @@
     <item
         android:id="@+id/action_remove"
         android:title="@string/remove" />
+    <item
+        android:id="@+id/analyze"
+        android:title="@string/analyze" />
 </menu>

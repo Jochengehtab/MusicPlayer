@@ -6,6 +6,20 @@
     android:fitsSystemWindows="true"
     android:padding="16dp">
 
+    <ImageButton
+        android:id="@+id/sync_status_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Syncing"
+        android:src="@drawable/ic_sync_white_24dp"
+        android:visibility="gone"
+        app:tint="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- Search Icon -->
     <ImageButton
         android:id="@+id/search_icon"

@@ -4,11 +4,11 @@ plugins {
 
 android {
     namespace = 'com.jochengehtab.musicplayer'
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.jochengehtab.musicplayer"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -19,14 +19,33 @@ android {
             minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            signingConfig = signingConfigs.debug
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+    androidResources {
+        noCompress 'tflite'
+    }
+
 }
 
 dependencies {
+    implementation "androidx.media:media:1.7.1"
+    implementation 'org.pytorch:executorch-android:1.0.1'
+    implementation 'com.facebook.fbjni:fbjni:0.7.0'
+    implementation 'com.facebook.soloader:soloader:0.12.1'
+    implementation 'com.google.ai.edge.litert:litert:2.1.0'
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'

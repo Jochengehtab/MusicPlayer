@@ -100,7 +100,7 @@ public class Trim {
             long end = seekEnd.getProgress();
             // Pass the entire track object for the preview.
             // The timespan argument overrides the saved trim times.
-            musicUtility.play(track, null, start, end);
+            musicUtility.playTrack(track, start, end);
         });
 
         builder.setPositiveButton("OK", (dialog, which) -> {

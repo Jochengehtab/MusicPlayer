@@ -1,14 +1,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <group
         android:id="@+id/group_playback_modes"
-        android:checkableBehavior="single">   <!-- single → radio-style -->
+        android:checkableBehavior="single">
+
         <item
             android:id="@+id/action_loop"
             android:checkable="true"
-            android:title="Loop" />
+            android:title="@string/loop" />
+
         <item
             android:id="@+id/action_mix"
             android:checkable="true"
-            android:title="Mix" />
+            android:title="@string/mix" />
+
     </group>
 </menu>
