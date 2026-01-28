@@ -25,8 +25,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     packagingOptions {
@@ -45,7 +45,7 @@ dependencies {
     implementation 'org.pytorch:executorch-android:1.0.1'
     implementation 'com.facebook.fbjni:fbjni:0.7.0'
     implementation 'com.facebook.soloader:soloader:0.12.1'
-    implementation 'com.google.ai.edge.litert:litert:2.1.0'
+    implementation 'com.google.ai.edge.litert:litert:2.1.1'
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
