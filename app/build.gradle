@@ -38,6 +38,11 @@ android {
         noCompress 'tflite'
     }
 
+    buildFeatures {
+        buildConfig = true
+        resValues = true
+    }
+
 }
 
 dependencies {
