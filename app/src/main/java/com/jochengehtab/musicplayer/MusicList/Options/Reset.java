@@ -5,8 +5,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

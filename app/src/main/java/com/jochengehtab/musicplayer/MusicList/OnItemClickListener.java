@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.MusicList;
 
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.Track;
 
 /**
  * A simple interface to handle click events on a Track item in the RecyclerView.

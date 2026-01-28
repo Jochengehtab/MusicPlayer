@@ -3,7 +3,7 @@ package com.jochengehtab.musicplayer.MusicList;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.List;
 import java.util.Objects;

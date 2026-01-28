@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer.data;
+package com.jochengehtab.musicplayer.Data;
 
 import androidx.room.Embedded;
 import androidx.room.Junction;

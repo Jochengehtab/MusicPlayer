@@ -8,8 +8,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog.Builder;
 
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.ArrayList;
 import java.util.List;

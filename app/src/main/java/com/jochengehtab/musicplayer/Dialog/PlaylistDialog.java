@@ -18,8 +18,8 @@ import com.jochengehtab.musicplayer.MainActivity.MainActivity;
 import com.jochengehtab.musicplayer.MusicList.PlaylistActionsListener;
 import com.jochengehtab.musicplayer.MusicList.PlaylistAdapter;
 import com.jochengehtab.musicplayer.R;
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.Playlist;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Playlist;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;

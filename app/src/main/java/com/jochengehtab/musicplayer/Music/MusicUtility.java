@@ -10,14 +10,13 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.PlaylistWithTracks;
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.PlaylistWithTracks;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;

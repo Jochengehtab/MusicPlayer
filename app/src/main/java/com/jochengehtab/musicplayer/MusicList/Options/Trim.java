@@ -14,8 +14,8 @@ import androidx.appcompat.app.AlertDialog.Builder;
 
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.R;
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

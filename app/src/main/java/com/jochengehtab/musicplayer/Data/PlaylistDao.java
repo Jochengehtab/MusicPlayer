@@ -1,4 +1,4 @@
-package com.jochengehtab.musicplayer.data;
+package com.jochengehtab.musicplayer.Data;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

@@ -1,6 +1,6 @@
 package com.jochengehtab.musicplayer.Music;
 
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.Track;
 
 public class MediaPlayer extends android.media.MediaPlayer {
 

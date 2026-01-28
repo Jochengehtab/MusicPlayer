@@ -27,10 +27,10 @@ import com.jochengehtab.musicplayer.MusicList.Options.Rename;
 import com.jochengehtab.musicplayer.MusicList.Options.Reset;
 import com.jochengehtab.musicplayer.MusicList.Options.Trim;
 import com.jochengehtab.musicplayer.R;
-import com.jochengehtab.musicplayer.data.AppDatabase;
-import com.jochengehtab.musicplayer.data.Playlist;
-import com.jochengehtab.musicplayer.data.PlaylistTrackCrossRef;
-import com.jochengehtab.musicplayer.data.Track;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Playlist;
+import com.jochengehtab.musicplayer.Data.PlaylistTrackCrossRef;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.ArrayList;
 import java.util.List;
