@@ -27,6 +27,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       # Build the Debug APK (Automatically signed with a temp key)
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
