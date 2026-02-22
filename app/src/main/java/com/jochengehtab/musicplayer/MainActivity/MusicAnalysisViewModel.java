@@ -1,12 +1,20 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
+import android.app.Application;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import java.util.List;
+import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
 
-public class MusicAnalysisViewModel extends ViewModel {
+import java.util.List;
+import java.util.concurrent.Executors;
+
+public class MusicAnalysisViewModel extends AndroidViewModel  {
 
     public MutableLiveData<Boolean> getIsSyncing() {
         return isSyncing;
@@ -24,9 +32,14 @@ public class MusicAnalysisViewModel extends ViewModel {
 
     private final MusicAnalysis musicAnalysis;
 
-    public MusicAnalysisViewModel(MusicAnalysis musicAnalysis) {
-        super();
-        this.musicAnalysis = musicAnalysis;
+    public MusicAnalysisViewModel(@NonNull Application application) {
+        super(application);
+        // 3. Create the dependencies HERE (Safe context)
+        AppDatabase database = AppDatabase.getDatabase(application);
+        AudioClassifier classifier = new AudioClassifier(application);
+
+        // Initialize the logic object
+        this.musicAnalysis = new MusicAnalysis(database, Executors.newSingleThreadExecutor(), classifier);
     }
 
     public void startAnalysis() {

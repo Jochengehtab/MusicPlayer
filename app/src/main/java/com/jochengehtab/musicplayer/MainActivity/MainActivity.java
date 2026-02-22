@@ -128,6 +128,29 @@ public class MainActivity extends AppCompatActivity {
                 // Yes, it is open. Update the list rows.
                 //updateDialogRows(tasks);
             }
+
+            // Only update the UI if the Dialog is actually open!
+            // If the dialog is closed, 'activeThreadsContainer' might be null or invisible.
+            if (analysisDialog != null && analysisDialog.isShowing() && activeThreadsContainer != null) {
+
+                activeThreadsContainer.removeAllViews();
+                LayoutInflater inflater = LayoutInflater.from(this);
+
+                int limit = Math.min(tasks.size(), 3);
+
+                for (int i = 0; i < limit; i++) {
+                    TaskStatus task = tasks.get(i);
+
+                    View row = inflater.inflate(R.layout.item_analysis_thread, activeThreadsContainer, false);
+                    TextView title = row.findViewById(R.id.thread_track_title);
+                    ProgressBar bar = row.findViewById(R.id.thread_progress_bar);
+
+                    title.setText(task.trackTitle);
+                    bar.setProgress(task.progress);
+
+                    activeThreadsContainer.addView(row);
+                }
+            }
             // If dialog is null or not showing, we do nothing. The data is ignored.
         });
 
@@ -142,23 +165,7 @@ public class MainActivity extends AppCompatActivity {
 
         syncStatusButton.setOnClickListener(v -> viewModel.startAnalysis());
 
-        activeThreadsContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(this);
-
-        int limit = Math.min(Objects.requireNonNull(viewModel.getActiveTasks().getValue()).size(), 3);
-
-        for (int i = 0; i < limit; i++) {
-            TaskStatus task = viewModel.getActiveTasks().getValue().get(i);
-            View row = inflater.inflate(R.layout.item_analysis_thread, activeThreadsContainer, false);
-
-            TextView title = row.findViewById(R.id.thread_track_title);
-            ProgressBar bar = row.findViewById(R.id.thread_progress_bar);
-
-            title.setText(task.trackTitle);
-            bar.setProgress(task.progress);
-
-            activeThreadsContainer.addView(row);
-        }
 
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
