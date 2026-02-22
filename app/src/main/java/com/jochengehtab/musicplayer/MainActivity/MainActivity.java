@@ -18,8 +18,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -27,6 +30,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.app.ActivityCompat;
@@ -70,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private SearchView searchView;
     private List<Track> currentlyDisplayedTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
+    private AlertDialog analysisDialog;
     private BottomOptions bottomOptions;
     private SortingOrder currentSortOrder = SortingOrder.MOST_RECENT;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
@@ -80,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
     private Animation rotateAnimation;
     private LinearLayout activeThreadsContainer;
     private AudioClassifier audioClassifier;
+    private TextView dialogEtaText;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -114,15 +120,35 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
+        viewModel.getActiveTasks().observe(this, tasks -> {
+            // YOUR CHECK GOES HERE
+            // "Is the dialog actually open?"
+            if (analysisDialog != null && analysisDialog.isShowing()) {
+                // Yes, it is open. Update the list rows.
+                //updateDialogRows(tasks);
+            }
+            // If dialog is null or not showing, we do nothing. The data is ignored.
+        });
+
+// 2. Observe the ETA Text
+        viewModel.getEtaText().observe(this, text -> {
+            // YOUR CHECK GOES HERE
+            // "Is the text view visible?"
+            if (dialogEtaText != null && dialogEtaText.getVisibility() == View.VISIBLE) {
+                dialogEtaText.setText(text);
+            }
+        });
+
         syncStatusButton.setOnClickListener(v -> viewModel.startAnalysis());
 
         activeThreadsContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(this);
 
-        int limit = Math.min(statusList.size(), 3);
+        int limit = Math.min(Objects.requireNonNull(viewModel.getActiveTasks().getValue()).size(), 3);
 
         for (int i = 0; i < limit; i++) {
-            TaskStatus task = statusList.get(i);
+            TaskStatus task = viewModel.getActiveTasks().getValue().get(i);
             View row = inflater.inflate(R.layout.item_analysis_thread, activeThreadsContainer, false);
 
             TextView title = row.findViewById(R.id.thread_track_title);
@@ -165,6 +191,47 @@ public class MainActivity extends AppCompatActivity {
         setupUI();
         registerReceiver(noisyReceiver, intentFilter);
     }
+
+    private void showAnalysisStatusDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_analysis_status, null);
+        builder.setView(dialogView);
+
+        // Bind Views
+        activeThreadsContainer = dialogView.findViewById(R.id.active_threads_container);
+        dialogEtaText = dialogView.findViewById(R.id.status_eta_text);
+        ImageView infoIcon = dialogView.findViewById(R.id.status_info_icon);
+        ListView queueListView = dialogView.findViewById(R.id.status_queue_list);
+
+        /*
+        // Initial Data Populate
+        updateDialogStatus();
+
+        queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
+        queueListView.setAdapter(queueAdapter);
+*/
+        infoIcon.setOnClickListener(v -> {
+            if (dialogEtaText.getVisibility() == View.VISIBLE) {
+                dialogEtaText.setVisibility(View.GONE);
+            } else {
+                dialogEtaText.setVisibility(View.VISIBLE);
+                //updateTotalEtaCalculation();
+            }
+        });
+
+        builder.setTitle("Analysis Status")
+                .setPositiveButton("Close", null);
+
+        analysisDialog = builder.create();
+        analysisDialog.show();
+
+        analysisDialog.setOnDismissListener(d -> {
+            analysisDialog = null;
+            activeThreadsContainer = null;
+            //queueAdapter = null;
+        });
+    }
+
     private void handlePlayPauseClick() {
         if (musicUtility.isPlaying()) {
             musicUtility.pause();
@@ -306,12 +373,15 @@ public class MainActivity extends AppCompatActivity {
                 database.playlistDao().addTracksToPlaylist(crossRefs);
             }
 
+            /*
             // 5. Update UI
             handler.post(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 loadAndShowPlaylist(currentPlaylistName);
                 musicAnalysis.checkAndStartAnalysis();
             });
+
+             */
         });
     }
 
@@ -369,11 +439,13 @@ public class MainActivity extends AppCompatActivity {
 
             currentlyDisplayedTracks = new ArrayList<>(playlistTracks);
 
+            /*
             handler.post(() -> {
                 trackAdapter.updateList(currentlyDisplayedTracks);
                 bottomTitle.setText(R.string.no_track_selected);
                 updatePlayButtonIcon();
             });
+             */
         });
     }
 
@@ -425,9 +497,6 @@ public class MainActivity extends AppCompatActivity {
         musicUtility.destroy();
         unregisterReceiver(noisyReceiver);
         executor.shutdown();
-        if (analysisExecutor != null) {
-            analysisExecutor.shutdownNow();
-        }
     }
 
     private class BecomingNoisyReceiver extends BroadcastReceiver {

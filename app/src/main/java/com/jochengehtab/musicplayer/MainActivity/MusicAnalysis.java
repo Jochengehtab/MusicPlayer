@@ -143,16 +143,11 @@ public class MusicAnalysis {
             // Sort them to prevent jumping
             statusList.sort(Comparator.comparing(s -> s.trackTitle));
 
-            callback.onUpdate(statusList);
-
-            // 5. Update ETA
-            if (dialogEtaText.getVisibility() == View.VISIBLE) {
-                updateTotalEtaCalculation();
-            }
+            callback.onUpdate(statusList, calculateETA());
         }
     }
 
-    private void updateTotalEtaCalculation() {
+    private String calculateETA() {
         int itemsInQueue = analysisQueueTitles.size();
 
         long avgTimePerTrack = (totalTracksProcessed.get() > 0)
@@ -173,49 +168,7 @@ public class MusicAnalysis {
 
         String timeString = (minutes > 0) ? minutes + "m " + seconds + "s" : seconds + "s";
 
-        String infoText = "Queue: " + itemsInQueue + " tracks waiting\n" +
+        return "Queue: " + itemsInQueue + " tracks waiting\n" +
                 "Est. time: " + timeString + " (" + OPTIMAL_THREAD_COUNT + " threads)";
-
-        dialogEtaText.setText(infoText);
     }
-
-    public void showAnalysisStatusDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        View dialogView = context.getLayoutInflater().inflate(R.layout.dialog_analysis_status, null);
-        builder.setView(dialogView);
-
-        // Bind Views
-        activeThreadsContainer = dialogView.findViewById(R.id.active_threads_container);
-        dialogEtaText = dialogView.findViewById(R.id.status_eta_text);
-        ImageView infoIcon = dialogView.findViewById(R.id.status_info_icon);
-        ListView queueListView = dialogView.findViewById(R.id.status_queue_list);
-
-        // Initial Data Populate
-        updateDialogStatus();
-
-        queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
-        queueListView.setAdapter(queueAdapter);
-
-        infoIcon.setOnClickListener(v -> {
-            if (dialogEtaText.getVisibility() == View.VISIBLE) {
-                dialogEtaText.setVisibility(View.GONE);
-            } else {
-                dialogEtaText.setVisibility(View.VISIBLE);
-                updateTotalEtaCalculation();
-            }
-        });
-
-        builder.setTitle("Analysis Status")
-                .setPositiveButton("Close", null);
-
-        analysisDialog = builder.create();
-        analysisDialog.show();
-
-        analysisDialog.setOnDismissListener(d -> {
-            analysisDialog = null;
-            activeThreadsContainer = null;
-            queueAdapter = null;
-        });
-    }
-
 }

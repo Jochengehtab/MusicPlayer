@@ -1,19 +1,26 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import java.util.List;
 
 public class MusicAnalysisViewModel extends ViewModel {
-    private final MutableLiveData<String> currentStatus = new MutableLiveData<>();
 
     public MutableLiveData<Boolean> getIsSyncing() {
         return isSyncing;
     }
 
     private final MutableLiveData<Boolean> isSyncing = new MutableLiveData<>();
-    private final MutableLiveData<Integer> limit = new MutableLiveData<>();
+
+    // Holds the list
+    private final MutableLiveData<List<TaskStatus>> activeTasks = new MutableLiveData<>();
+    // Holds the text
+    private final MutableLiveData<String> etaText = new MutableLiveData<>();
+
+    public LiveData<List<TaskStatus>> getActiveTasks() { return activeTasks; }
+    public LiveData<String> getEtaText() { return etaText; }
 
     private final MusicAnalysis musicAnalysis;
 
@@ -32,18 +39,14 @@ public class MusicAnalysisViewModel extends ViewModel {
             }
 
             @Override
-            public void onProgress(String trackName, int percent) {
-
-            }
-
-            @Override
             public void onFinish() {
 
             }
 
             @Override
-            public void onUpdate(List<TaskStatus> statusList) {
-
+            public void onUpdate(List<TaskStatus> statusList, String etaString) {
+                activeTasks.postValue(statusList);
+                etaText.postValue(etaString);
             }
         });
     }
