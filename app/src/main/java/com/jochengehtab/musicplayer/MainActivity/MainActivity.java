@@ -165,8 +165,6 @@ public class MainActivity extends AppCompatActivity {
 
         syncStatusButton.setOnClickListener(v -> viewModel.startAnalysis());
 
-        LayoutInflater inflater = LayoutInflater.from(this);
-
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
             bottomTitle.setText(track.title);
@@ -380,15 +378,11 @@ public class MainActivity extends AppCompatActivity {
                 database.playlistDao().addTracksToPlaylist(crossRefs);
             }
 
-            /*
-            // 5. Update UI
-            handler.post(() -> {
+            // Now since everything is done we update the UI
+            runOnUiThread(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 loadAndShowPlaylist(currentPlaylistName);
-                musicAnalysis.checkAndStartAnalysis();
             });
-
-             */
         });
     }
 
@@ -446,13 +440,11 @@ public class MainActivity extends AppCompatActivity {
 
             currentlyDisplayedTracks = new ArrayList<>(playlistTracks);
 
-            /*
-            handler.post(() -> {
+            runOnUiThread(() -> {
                 trackAdapter.updateList(currentlyDisplayedTracks);
                 bottomTitle.setText(R.string.no_track_selected);
                 updatePlayButtonIcon();
             });
-             */
         });
     }
 

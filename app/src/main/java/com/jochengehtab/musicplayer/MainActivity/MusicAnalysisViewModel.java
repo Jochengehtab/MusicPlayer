@@ -34,11 +34,9 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
 
     public MusicAnalysisViewModel(@NonNull Application application) {
         super(application);
-        // 3. Create the dependencies HERE (Safe context)
         AppDatabase database = AppDatabase.getDatabase(application);
         AudioClassifier classifier = new AudioClassifier(application);
 
-        // Initialize the logic object
         this.musicAnalysis = new MusicAnalysis(database, Executors.newSingleThreadExecutor(), classifier);
     }
 
