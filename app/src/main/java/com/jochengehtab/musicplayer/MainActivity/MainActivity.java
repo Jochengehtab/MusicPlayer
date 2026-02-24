@@ -84,8 +84,8 @@ public class MainActivity extends AppCompatActivity {
     private MusicAnalysis musicAnalysis;
     private Animation rotateAnimation;
     private LinearLayout activeThreadsContainer;
-    private AudioClassifier audioClassifier;
     private TextView dialogEtaText;
+    private MusicAnalysisViewModel viewModel;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
 
         database = AppDatabase.getDatabase(this);
         musicUtility = new MusicUtility(this, database, this::updateBottomTitle, this::updatePlayButtonIcon);
-        audioClassifier = new AudioClassifier(this);
+        AudioClassifier audioClassifier = new AudioClassifier(this);
 
         RecyclerView musicList = findViewById(R.id.musicList);
         bottomPlay = findViewById(R.id.bottom_play);
@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         syncStatusButton = findViewById(R.id.sync_status_button);
         rotateAnimation = AnimationUtils.loadAnimation(this, R.anim.rotate_infinite);
 
-        MusicAnalysisViewModel viewModel = new ViewModelProvider(this).get(MusicAnalysisViewModel.class);
+        viewModel = new ViewModelProvider(this).get(MusicAnalysisViewModel.class);
 
         viewModel.getIsSyncing().observe(this, isSyncing -> {
             if (isSyncing) {
@@ -122,17 +122,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         viewModel.getActiveTasks().observe(this, tasks -> {
-            // YOUR CHECK GOES HERE
-            // "Is the dialog actually open?"
-            if (analysisDialog != null && analysisDialog.isShowing()) {
-                // Yes, it is open. Update the list rows.
-                //updateDialogRows(tasks);
-            }
-
             // Only update the UI if the Dialog is actually open!
             // If the dialog is closed, 'activeThreadsContainer' might be null or invisible.
             if (analysisDialog != null && analysisDialog.isShowing() && activeThreadsContainer != null) {
-
+                //updateDialogRows(tasks);
                 activeThreadsContainer.removeAllViews();
                 LayoutInflater inflater = LayoutInflater.from(this);
 
@@ -378,10 +371,12 @@ public class MainActivity extends AppCompatActivity {
                 database.playlistDao().addTracksToPlaylist(crossRefs);
             }
 
+            // TODO start the actual search for new music files here
             // Now since everything is done we update the UI
             runOnUiThread(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 loadAndShowPlaylist(currentPlaylistName);
+                viewModel.startAnalysis();
             });
         });
     }

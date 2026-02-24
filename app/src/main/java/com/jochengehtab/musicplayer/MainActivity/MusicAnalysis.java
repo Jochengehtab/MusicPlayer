@@ -11,7 +11,6 @@ import androidx.appcompat.app.AlertDialog;
 import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Data.AppDatabase;
 import com.jochengehtab.musicplayer.Data.Track;
-import com.jochengehtab.musicplayer.R;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +32,7 @@ public class MusicAnalysis {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final int OPTIMAL_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors() / 3);
     private final ThreadLocal<AudioClassifier> threadLocalClassifier;
-    private ExecutorService analysisExecutor;
+    private final ExecutorService analysisExecutor;
     private AlertDialog analysisDialog;
     private ArrayAdapter<String> queueAdapter;
     private final Map<Long, TaskStatus> activeTasks = new ConcurrentHashMap<>();
@@ -62,9 +61,7 @@ public class MusicAnalysis {
                     unanalyzedTracks.add(track);
                 }
             }
-
             if (unanalyzedTracks.isEmpty()) return;
-
             pendingTasksCount.addAndGet(unanalyzedTracks.size());
 
             // The analysis has begun
