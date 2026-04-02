@@ -7,7 +7,6 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
 import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Data.AppDatabase;
@@ -31,24 +30,24 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
     public LiveData<List<TaskStatus>> getActiveTasks() { return activeTasks; }
     public LiveData<String> getEtaText() { return etaText; }
 
-    private final MusicAnalysis musicAnalysis;
+    private final MusicAnalysisModel musicAnalysisModel;
 
     public MusicAnalysisViewModel(@NonNull Application application) {
         super(application);
         AppDatabase database = AppDatabase.getDatabase(application);
         AudioClassifier classifier = new AudioClassifier(application);
 
-        this.musicAnalysis = new MusicAnalysis(database, Executors.newSingleThreadExecutor(), classifier);
+        this.musicAnalysisModel = new MusicAnalysisModel(database, Executors.newSingleThreadExecutor(), classifier);
     }
 
     public void startAnalysis() {
-        Log.i("Started", "Schtart1");
+        Log.i("Started", "Schtart1223");
         // You call the method and provide the implementation of the callback here
-        musicAnalysis.checkAndStartAnalysis(new MusicAnalysisCallback() {
+        musicAnalysisModel.checkAndStartAnalysis(new MusicAnalysisCallback() {
 
             @Override
             public void onStarted() {
-                Log.i("Started", "Schtart");
+                Log.i("Started", "Schtartasdfasdfasdfas");
             }
 
             @Override

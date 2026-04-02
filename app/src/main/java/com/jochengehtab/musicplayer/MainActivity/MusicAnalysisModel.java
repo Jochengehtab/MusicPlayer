@@ -24,12 +24,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MusicAnalysis {
+public class MusicAnalysisModel {
 
     private final AppDatabase database;
     private final List<String> analysisQueueTitles = Collections.synchronizedList(new LinkedList<>());
     private final AtomicInteger pendingTasksCount = new AtomicInteger(0);
-    private final Handler handler = new Handler(Looper.getMainLooper());
     private final int OPTIMAL_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors() / 3);
     private final ThreadLocal<AudioClassifier> threadLocalClassifier;
     private final ExecutorService analysisExecutor;
@@ -43,7 +42,7 @@ public class MusicAnalysis {
 
 
     // TODO check if passing via constructor is the best option for the database
-    public MusicAnalysis(AppDatabase database, ExecutorService executor, AudioClassifier audioClassifier) {
+    public MusicAnalysisModel(AppDatabase database, ExecutorService executor, AudioClassifier audioClassifier) {
         this.database = database;
         this.executor = executor;
         analysisExecutor = Executors.newFixedThreadPool(OPTIMAL_THREAD_COUNT);
@@ -57,10 +56,14 @@ public class MusicAnalysis {
             List<Track> unanalyzedTracks = new ArrayList<>();
 
             for (Track track : allTracks) {
+                Log.i("aedshifpa", "asdfadsphfduashnfdauospfd");
+                Log.i("aedshifpa", track.title);
+
                 if (track.embeddingVector == null || track.embeddingVector.isEmpty()) {
                     unanalyzedTracks.add(track);
                 }
             }
+
             if (unanalyzedTracks.isEmpty()) return;
             pendingTasksCount.addAndGet(unanalyzedTracks.size());
 
@@ -116,6 +119,8 @@ public class MusicAnalysis {
                     analysisQueueTitles.remove(track.title);
                     int remaining = pendingTasksCount.decrementAndGet();
 
+                    // TODO move this
+                    /*
                     handler.post(() -> {
                         if (queueAdapter != null) queueAdapter.notifyDataSetChanged();
                         // Also update dialog to remove the finished bar
@@ -125,6 +130,8 @@ public class MusicAnalysis {
                             callback.onFinish();
                         }
                     });
+
+                     */
                 });
             }
         });

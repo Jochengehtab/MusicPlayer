@@ -18,7 +18,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -81,7 +80,6 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar updateProgressBar;
     private AppDatabase database;
     private ImageButton syncStatusButton;
-    private MusicAnalysis musicAnalysis;
     private Animation rotateAnimation;
     private LinearLayout activeThreadsContainer;
     private TextView dialogEtaText;
@@ -120,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         viewModel.getActiveTasks().observe(this, tasks -> {
             // Only update the UI if the Dialog is actually open!
             // If the dialog is closed, 'activeThreadsContainer' might be null or invisible.
@@ -147,9 +144,7 @@ public class MainActivity extends AppCompatActivity {
             // If dialog is null or not showing, we do nothing. The data is ignored.
         });
 
-// 2. Observe the ETA Text
         viewModel.getEtaText().observe(this, text -> {
-            // YOUR CHECK GOES HERE
             // "Is the text view visible?"
             if (dialogEtaText != null && dialogEtaText.getVisibility() == View.VISIBLE) {
                 dialogEtaText.setText(text);
@@ -170,8 +165,6 @@ public class MainActivity extends AppCompatActivity {
                 musicUtility,
                 database
         );
-
-        musicAnalysis = new MusicAnalysis(database, executor, audioClassifier);
 
         musicList.setLayoutManager(new LinearLayoutManager(this));
         musicList.setAdapter(trackAdapter);
