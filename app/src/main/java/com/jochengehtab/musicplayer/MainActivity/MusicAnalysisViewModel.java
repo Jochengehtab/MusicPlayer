@@ -25,9 +25,7 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
     public MusicAnalysisViewModel(@NonNull Application application) {
         super(application);
         AppDatabase database = AppDatabase.getDatabase(application);
-        AudioClassifier classifier = new AudioClassifier(application);
-
-        this.musicAnalysisModel = new MusicAnalysisModel(database, Executors.newSingleThreadExecutor(), classifier);
+        this.musicAnalysisModel = new MusicAnalysisModel(database, Executors.newSingleThreadExecutor(), application);
     }
 
     public void startAnalysis() {

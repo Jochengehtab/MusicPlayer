@@ -1,5 +1,6 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
+import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
@@ -35,11 +36,11 @@ public class MusicAnalysisModel {
 
 
     // TODO check if passing via constructor is the best option for the database
-    public MusicAnalysisModel(AppDatabase database, ExecutorService executor, AudioClassifier audioClassifier) {
+    public MusicAnalysisModel(AppDatabase database, ExecutorService executor, Context context) {
         this.database = database;
         this.executor = executor;
         analysisExecutor = Executors.newFixedThreadPool(OPTIMAL_THREAD_COUNT);
-        threadLocalClassifier = ThreadLocal.withInitial(() -> audioClassifier);
+        threadLocalClassifier = ThreadLocal.withInitial(() -> new AudioClassifier(context));
     }
 
     public void checkAndStartAnalysis(MusicAnalysisCallback callback) {
