@@ -132,16 +132,15 @@ public class MusicAnalysis {
 
     // TODO make here a seperate class that holds the active tasks so that i only need to remove the object instead of rebuilding it
     public void updateDialogStatus(MusicAnalysisCallback callback) {
-        if (analysisDialog != null && analysisDialog.isShowing()) {
+        // Get all active tasks
+        List<TaskStatus> statusList = new ArrayList<>(activeTasks.values());
+        // Sort them to prevent jumping
+        statusList.sort(Comparator.comparing(s -> s.trackTitle));
 
-            // Get all active tasks
-            List<TaskStatus> statusList = new ArrayList<>(activeTasks.values());
-
-            // Sort them to prevent jumping
-            statusList.sort(Comparator.comparing(s -> s.trackTitle));
-
-            callback.onUpdate(statusList, calculateETA());
-        }
+        // We create a copy of the list to avoid multiple memory access because elsewhere
+        // we would pass the raw memory reference
+        List<String> currentSnapshot = new ArrayList<>(analysisQueueTitles);
+        callback.onUpdate(statusList, calculateETA(), currentSnapshot);
     }
 
     private String calculateETA() {
