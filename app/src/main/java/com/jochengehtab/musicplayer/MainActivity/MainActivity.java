@@ -80,12 +80,14 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar updateProgressBar;
     private AppDatabase database;
     private ImageButton syncStatusButton;
+    private MusicAnalysis musicAnalysis;
     private Animation rotateAnimation;
     private LinearLayout activeThreadsContainer;
     private TextView dialogEtaText;
     private MusicAnalysisViewModel musicAnalysisViewModel;
     private List<String> analysisQueueTitles;
     private ArrayAdapter<String> queueAdapter;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -209,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
 
         queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
         queueListView.setAdapter(queueAdapter);
-
+*/
         infoIcon.setOnClickListener(v -> {
             if (dialogEtaText.getVisibility() == View.VISIBLE) {
                 dialogEtaText.setVisibility(View.GONE);
