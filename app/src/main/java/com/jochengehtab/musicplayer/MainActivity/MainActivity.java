@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
 
         queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
         queueListView.setAdapter(queueAdapter);
-*/
+
         infoIcon.setOnClickListener(v -> {
             if (dialogEtaText.getVisibility() == View.VISIBLE) {
                 dialogEtaText.setVisibility(View.GONE);
