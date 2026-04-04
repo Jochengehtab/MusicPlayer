@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private Animation rotateAnimation;
     private LinearLayout activeThreadsContainer;
     private TextView dialogEtaText;
-    private MusicAnalysisViewModel viewModel;
+    private MusicAnalysisViewModel musicAnalysisViewModel;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -104,9 +104,9 @@ public class MainActivity extends AppCompatActivity {
         syncStatusButton = findViewById(R.id.sync_status_button);
         rotateAnimation = AnimationUtils.loadAnimation(this, R.anim.rotate_infinite);
 
-        viewModel = new ViewModelProvider(this).get(MusicAnalysisViewModel.class);
+        musicAnalysisViewModel = new ViewModelProvider(this).get(MusicAnalysisViewModel.class);
 
-        viewModel.getIsSyncing().observe(this, isSyncing -> {
+        musicAnalysisViewModel.getIsSyncing().observe(this, isSyncing -> {
             if (isSyncing) {
                 if (syncStatusButton.getVisibility() != View.VISIBLE) {
                     syncStatusButton.setVisibility(View.VISIBLE);
@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.getActiveTasks().observe(this, tasks -> {
+        musicAnalysisViewModel.getActiveTasks().observe(this, tasks -> {
             // Only update the UI if the Dialog is actually open!
             // If the dialog is closed, 'activeThreadsContainer' might be null or invisible.
             if (analysisDialog != null && analysisDialog.isShowing() && activeThreadsContainer != null) {
@@ -144,14 +144,14 @@ public class MainActivity extends AppCompatActivity {
             // If dialog is null or not showing, we do nothing. The data is ignored.
         });
 
-        viewModel.getEtaText().observe(this, text -> {
+        musicAnalysisViewModel.getEtaText().observe(this, text -> {
             // "Is the text view visible?"
             if (dialogEtaText != null && dialogEtaText.getVisibility() == View.VISIBLE) {
                 dialogEtaText.setText(text);
             }
         });
 
-        syncStatusButton.setOnClickListener(v -> viewModel.startAnalysis());
+        syncStatusButton.setOnClickListener(v -> musicAnalysisViewModel.startAnalysis());
 
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
@@ -369,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 updateProgressBar.setVisibility(View.GONE);
                 loadAndShowPlaylist(currentPlaylistName);
-                viewModel.startAnalysis();
+                musicAnalysisViewModel.startAnalysis();
             });
         });
     }

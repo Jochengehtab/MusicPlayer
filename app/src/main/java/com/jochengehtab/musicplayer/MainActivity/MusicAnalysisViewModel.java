@@ -1,7 +1,6 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.app.Application;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -41,25 +40,22 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
     }
 
     public void startAnalysis() {
-        Log.i("Started", "Schtart1223");
-        // You call the method and provide the implementation of the callback here
         musicAnalysisModel.checkAndStartAnalysis(new MusicAnalysisCallback() {
 
             @Override
             public void onStarted() {
-                Log.i("Started", "Schtartasdfasdfasdfas");
+                isSyncing.postValue(true);
             }
 
             @Override
             public void onFinish() {
-                Log.i("Finish", "Finish");
+                isSyncing.postValue(false);
             }
 
             @Override
             public void onUpdate(List<TaskStatus> statusList, String etaString) {
                 activeTasks.postValue(statusList);
                 etaText.postValue(etaString);
-                Log.i("Update", "Update");
             }
         });
     }

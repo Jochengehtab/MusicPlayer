@@ -1,12 +1,7 @@
 package com.jochengehtab.musicplayer.MainActivity;
 
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.widget.ArrayAdapter;
-
-import androidx.appcompat.app.AlertDialog;
 
 import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Data.AppDatabase;
@@ -32,8 +27,6 @@ public class MusicAnalysisModel {
     private final int OPTIMAL_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors() / 3);
     private final ThreadLocal<AudioClassifier> threadLocalClassifier;
     private final ExecutorService analysisExecutor;
-    private AlertDialog analysisDialog;
-    private ArrayAdapter<String> queueAdapter;
     private final Map<Long, TaskStatus> activeTasks = new ConcurrentHashMap<>();
     private final AtomicLong totalTimeSpentProcessing = new AtomicLong(0);
     private final AtomicInteger totalTracksProcessed = new AtomicInteger(0);
@@ -119,36 +112,31 @@ public class MusicAnalysisModel {
                     analysisQueueTitles.remove(track.title);
                     int remaining = pendingTasksCount.decrementAndGet();
 
-                    // TODO move this
-                    /*
-                    handler.post(() -> {
-                        if (queueAdapter != null) queueAdapter.notifyDataSetChanged();
-                        // Also update dialog to remove the finished bar
-                        updateDialogStatus(callback);
+                    updateDialogStatus(callback);
 
-                        if (remaining == 0) {
-                            callback.onFinish();
-                        }
-                    });
-
-                     */
+                    if (remaining == 0) {
+                        callback.onFinish();
+                    }
                 });
             }
         });
     }
 
     // TODO make here a seperate class that holds the active tasks so that i only need to remove the object instead of rebuilding it
+
+    /**
+     * This function calculates the estimated Time
+     * and broadcasts it to the provided callback
+     * @param callback The callback where the information should be broadcasted to
+     */
     public void updateDialogStatus(MusicAnalysisCallback callback) {
-        if (analysisDialog != null && analysisDialog.isShowing()) {
+        // Get all active tasks
+        List<TaskStatus> statusList = new ArrayList<>(activeTasks.values());
 
-            // Get all active tasks
-            List<TaskStatus> statusList = new ArrayList<>(activeTasks.values());
+        // Sort them to prevent jumping
+        statusList.sort(Comparator.comparing(s -> s.trackTitle));
 
-            // Sort them to prevent jumping
-            statusList.sort(Comparator.comparing(s -> s.trackTitle));
-
-            callback.onUpdate(statusList, calculateETA());
-        }
+        callback.onUpdate(statusList, calculateETA());
     }
 
     private String calculateETA() {
