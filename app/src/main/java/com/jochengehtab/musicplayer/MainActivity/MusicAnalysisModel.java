@@ -49,11 +49,9 @@ public class MusicAnalysisModel {
             List<Track> unanalyzedTracks = new ArrayList<>();
 
             for (Track track : allTracks) {
-                Log.i("aedshifpa", "asdfadsphfduashnfdauospfd");
-                Log.i("aedshifpa", track.title);
-
                 if (track.embeddingVector == null || track.embeddingVector.isEmpty()) {
                     unanalyzedTracks.add(track);
+                    analysisQueueTitles.add(track.title);
                 }
             }
 
@@ -69,7 +67,7 @@ public class MusicAnalysisModel {
                     long threadId = Thread.currentThread().getId();
                     long startTime = System.currentTimeMillis();
 
-                    // 1. Register Task Start
+                    // Register Task Start
                     activeTasks.put(threadId, new TaskStatus(track.title, startTime));
 
                     updateDialogStatus(callback);
@@ -79,7 +77,7 @@ public class MusicAnalysisModel {
                         AudioClassifier classifier = threadLocalClassifier.get();
                         assert classifier != null;
                         float[] vector = classifier.getStyleEmbedding(uri, (percent, msg) -> {
-                            // 2. Update Status
+                            // Update Status
                             TaskStatus status = activeTasks.get(threadId);
                             if (status != null) {
                                 status.progress = percent;
@@ -88,7 +86,6 @@ public class MusicAnalysisModel {
                         });
 
                         if (vector.length > 0) {
-                            // Atomic Update Logic
                             StringBuilder sb = new StringBuilder();
                             for (int i = 0; i < vector.length; i++) {
                                 if (i > 0) sb.append(",");
@@ -136,7 +133,10 @@ public class MusicAnalysisModel {
         // Sort them to prevent jumping
         statusList.sort(Comparator.comparing(s -> s.trackTitle));
 
-        callback.onUpdate(statusList, calculateETA());
+        // We need to create a copy here because else we are passing a direct
+        // memory reference which could lead to a ConcurrentModificationException
+        List<String> queueSnapshot = new ArrayList<>(analysisQueueTitles);
+        callback.onUpdate(statusList, calculateETA(), queueSnapshot);
     }
 
     private String calculateETA() {

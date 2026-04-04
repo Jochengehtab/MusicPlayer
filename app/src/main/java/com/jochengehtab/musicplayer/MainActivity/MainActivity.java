@@ -18,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -38,18 +39,17 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
+import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Playlist;
+import com.jochengehtab.musicplayer.Data.PlaylistTrackCrossRef;
+import com.jochengehtab.musicplayer.Data.PlaylistWithTracks;
+import com.jochengehtab.musicplayer.Data.Track;
 import com.jochengehtab.musicplayer.Dialog.PlaylistDialog;
 import com.jochengehtab.musicplayer.Music.MusicUtility;
 import com.jochengehtab.musicplayer.MusicList.OnItemClickListener;
 import com.jochengehtab.musicplayer.MusicList.TrackAdapter;
 import com.jochengehtab.musicplayer.R;
 import com.jochengehtab.musicplayer.Utility.SortingOrder;
-import com.jochengehtab.musicplayer.Data.AppDatabase;
-import com.jochengehtab.musicplayer.Data.Playlist;
-import com.jochengehtab.musicplayer.Data.PlaylistTrackCrossRef;
-import com.jochengehtab.musicplayer.Data.PlaylistWithTracks;
-import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +84,8 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout activeThreadsContainer;
     private TextView dialogEtaText;
     private MusicAnalysisViewModel musicAnalysisViewModel;
+    private List<String> analysisQueueTitles;
+    private ArrayAdapter<String> queueAdapter;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -94,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
 
         database = AppDatabase.getDatabase(this);
         musicUtility = new MusicUtility(this, database, this::updateBottomTitle, this::updatePlayButtonIcon);
-        AudioClassifier audioClassifier = new AudioClassifier(this);
 
         RecyclerView musicList = findViewById(R.id.musicList);
         bottomPlay = findViewById(R.id.bottom_play);
@@ -144,6 +145,18 @@ public class MainActivity extends AppCompatActivity {
             // If dialog is null or not showing, we do nothing. The data is ignored.
         });
 
+        musicAnalysisViewModel.getCurrentQueue().observe(this, tasks -> {
+            // We always update the local list
+            analysisQueueTitles = tasks;
+
+            // If the dialog is open and the adapter exists, update the UI dynamically!
+            if (analysisDialog != null && analysisDialog.isShowing() && queueAdapter != null) {
+                queueAdapter.clear();
+                queueAdapter.addAll(tasks);
+                queueAdapter.notifyDataSetChanged();
+            }
+        });
+
         musicAnalysisViewModel.getEtaText().observe(this, text -> {
             // "Is the text view visible?"
             if (dialogEtaText != null && dialogEtaText.getVisibility() == View.VISIBLE) {
@@ -151,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        syncStatusButton.setOnClickListener(v -> musicAnalysisViewModel.startAnalysis());
+        syncStatusButton.setOnClickListener(v -> showAnalysisStatusDialog());
 
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
@@ -194,19 +207,14 @@ public class MainActivity extends AppCompatActivity {
         ImageView infoIcon = dialogView.findViewById(R.id.status_info_icon);
         ListView queueListView = dialogView.findViewById(R.id.status_queue_list);
 
-        /*
-        // Initial Data Populate
-        updateDialogStatus();
-
         queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
         queueListView.setAdapter(queueAdapter);
-*/
+
         infoIcon.setOnClickListener(v -> {
             if (dialogEtaText.getVisibility() == View.VISIBLE) {
                 dialogEtaText.setVisibility(View.GONE);
             } else {
                 dialogEtaText.setVisibility(View.VISIBLE);
-                //updateTotalEtaCalculation();
             }
         });
 
@@ -219,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
         analysisDialog.setOnDismissListener(d -> {
             analysisDialog = null;
             activeThreadsContainer = null;
-            //queueAdapter = null;
+            queueAdapter = null;
         });
     }
 

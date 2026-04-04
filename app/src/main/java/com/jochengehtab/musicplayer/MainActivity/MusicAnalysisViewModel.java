@@ -9,26 +9,17 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Data.AppDatabase;
+import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.List;
 import java.util.concurrent.Executors;
 
 public class MusicAnalysisViewModel extends AndroidViewModel  {
-
-    public MutableLiveData<Boolean> getIsSyncing() {
-        return isSyncing;
-    }
-
     private final MutableLiveData<Boolean> isSyncing = new MutableLiveData<>();
-
-    // Holds the list
     private final MutableLiveData<List<TaskStatus>> activeTasks = new MutableLiveData<>();
-    // Holds the text
     private final MutableLiveData<String> etaText = new MutableLiveData<>();
 
-    public LiveData<List<TaskStatus>> getActiveTasks() { return activeTasks; }
-    public LiveData<String> getEtaText() { return etaText; }
-
+    private final MutableLiveData<List<String>> currentQueue = new MutableLiveData<>();
     private final MusicAnalysisModel musicAnalysisModel;
 
     public MusicAnalysisViewModel(@NonNull Application application) {
@@ -53,11 +44,20 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
             }
 
             @Override
-            public void onUpdate(List<TaskStatus> statusList, String etaString) {
+            public void onUpdate(List<TaskStatus> statusList, String etaString, List<String> analysisQueueTitles) {
                 activeTasks.postValue(statusList);
+                currentQueue.postValue(analysisQueueTitles);
                 etaText.postValue(etaString);
             }
         });
     }
 
+    public LiveData<List<TaskStatus>> getActiveTasks() { return activeTasks; }
+    public LiveData<String> getEtaText() { return etaText; }
+    public MutableLiveData<Boolean> getIsSyncing() {
+        return isSyncing;
+    }
+    public MutableLiveData<List<String>> getCurrentQueue() {
+        return currentQueue;
+    }
 }
