@@ -218,7 +218,7 @@ public class MusicUtility {
 
         // Stop the music exactly after delayMs is passed
         handler.postDelayed(() -> {
-            if (mediaPlayer == targetMp && targetMp.isPlaying()) {
+            if (mediaPlayer == targetMp) {
                 targetMp.pause();
                 updateBottomPlayIcon.accept(false);
                 if (loopEnabled) {
@@ -272,9 +272,6 @@ public class MusicUtility {
         mixEnabled = false;
     }
 
-    /**
-     * This is required because stopAndCancel() no longer releases memory.
-     */
     public synchronized void destroy() {
         cancelToken.set(true);
         handler.removeCallbacksAndMessages(null);
@@ -315,8 +312,11 @@ public class MusicUtility {
             scheduleStop(remainingTime, mediaPlayer);
             updateBottomPlayIcon.accept(true);
         } else {
-            // Edge case: If we resumed at the very end of the song, play next
-            findAndPlayNextSong(true);
+            if (loopEnabled) {
+                playCurrentQueueItem();
+            } else {
+                findAndPlayNextSong(true);
+            }
         }
 
         // Update Session State
