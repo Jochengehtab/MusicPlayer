@@ -207,20 +207,12 @@ public class MainActivity extends AppCompatActivity {
         // Bind Views
         activeThreadsContainer = dialogView.findViewById(R.id.active_threads_container);
         dialogEtaText = dialogView.findViewById(R.id.status_eta_text);
-        ImageView infoIcon = dialogView.findViewById(R.id.status_info_icon);
         ListView queueListView = dialogView.findViewById(R.id.status_queue_list);
 
         queueAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, analysisQueueTitles);
         queueListView.setAdapter(queueAdapter);
-
-        infoIcon.setOnClickListener(v -> {
-            if (dialogEtaText.getVisibility() == View.VISIBLE) {
-                dialogEtaText.setVisibility(View.GONE);
-            } else {
-                dialogEtaText.setVisibility(View.VISIBLE);
-            }
-        });
-
+        dialogEtaText.setVisibility(View.VISIBLE);
+        
         builder.setTitle("Analysis Status")
                 .setPositiveButton("Close", null);
 
