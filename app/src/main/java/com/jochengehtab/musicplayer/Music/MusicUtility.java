@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 public class MusicUtility {
     private static final int HISTORY_SIZE = 10; // Remember last 10 songs
     private int currentIndex = 0;
-    private boolean loopEnabled = false;
+    private boolean loopEnabled = true;
     private boolean mixEnabled = false;
     private final Context context;
     private final AppDatabase database;
