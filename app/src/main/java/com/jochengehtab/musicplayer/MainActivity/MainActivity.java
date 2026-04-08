@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout activeThreadsContainer;
     private TextView dialogEtaText;
     private MusicAnalysisViewModel musicAnalysisViewModel;
-    private List<String> analysisQueueTitles;
+    private final List<String> analysisQueueTitles = new ArrayList<>();
     private ArrayAdapter<String> queueAdapter;
 
 
@@ -125,7 +125,6 @@ public class MainActivity extends AppCompatActivity {
             // Only update the UI if the Dialog is actually open!
             // If the dialog is closed, 'activeThreadsContainer' might be null or invisible.
             if (analysisDialog != null && analysisDialog.isShowing() && activeThreadsContainer != null) {
-                //updateDialogRows(tasks);
                 activeThreadsContainer.removeAllViews();
                 LayoutInflater inflater = LayoutInflater.from(this);
 
@@ -144,29 +143,31 @@ public class MainActivity extends AppCompatActivity {
                     activeThreadsContainer.addView(row);
                 }
             }
-            // If dialog is null or not showing, we do nothing. The data is ignored.
         });
 
         musicAnalysisViewModel.getCurrentQueue().observe(this, tasks -> {
-            // We always update the local list
-            analysisQueueTitles = tasks;
+            analysisQueueTitles.clear();
+            if (tasks != null) {
+                analysisQueueTitles.addAll(tasks); // Add new data
+            }
 
-            // If the dialog is open and the adapter exists, update the UI dynamically!
-            if (analysisDialog != null && analysisDialog.isShowing() && queueAdapter != null) {
-                queueAdapter.clear();
-                queueAdapter.addAll(tasks);
+            // Because we initialized the dialog early, queueAdapter is never null
+            if (queueAdapter != null) {
                 queueAdapter.notifyDataSetChanged();
             }
         });
 
         musicAnalysisViewModel.getEtaText().observe(this, text -> {
-            // "Is the text view visible?"
-            if (dialogEtaText != null && dialogEtaText.getVisibility() == View.VISIBLE) {
+            if (dialogEtaText != null) {
                 dialogEtaText.setText(text);
             }
         });
 
-        syncStatusButton.setOnClickListener(v -> showAnalysisStatusDialog());
+        syncStatusButton.setOnClickListener(v -> {
+            if (analysisDialog != null && !analysisDialog.isShowing()) {
+                analysisDialog.show();
+            }
+        });
 
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
@@ -198,7 +199,7 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(noisyReceiver, intentFilter);
     }
 
-    private void showAnalysisStatusDialog() {
+    private void initializeAnalysisStatusDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_analysis_status, null);
         builder.setView(dialogView);
@@ -224,13 +225,6 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Close", null);
 
         analysisDialog = builder.create();
-        analysisDialog.show();
-
-        analysisDialog.setOnDismissListener(d -> {
-            analysisDialog = null;
-            activeThreadsContainer = null;
-            queueAdapter = null;
-        });
     }
 
     private void handlePlayPauseClick() {
@@ -242,6 +236,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupUI() {
+
+        initializeAnalysisStatusDialog();
+
         bottomOptions = new BottomOptions(this, musicUtility);
         playlistDialog = new PlaylistDialog(this, database, this::loadAndShowPlaylist);
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
