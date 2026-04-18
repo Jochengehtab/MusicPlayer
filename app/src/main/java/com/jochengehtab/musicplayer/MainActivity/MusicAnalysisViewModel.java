@@ -7,9 +7,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.jochengehtab.musicplayer.AudioClassifier.AudioClassifier;
 import com.jochengehtab.musicplayer.Data.AppDatabase;
-import com.jochengehtab.musicplayer.Data.Track;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -18,7 +16,6 @@ public class MusicAnalysisViewModel extends AndroidViewModel  {
     private final MutableLiveData<Boolean> isSyncing = new MutableLiveData<>();
     private final MutableLiveData<List<TaskStatus>> activeTasks = new MutableLiveData<>();
     private final MutableLiveData<String> etaText = new MutableLiveData<>();
-
     private final MutableLiveData<List<String>> currentQueue = new MutableLiveData<>();
     private final MusicAnalysisModel musicAnalysisModel;
 

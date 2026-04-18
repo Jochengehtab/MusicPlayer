@@ -73,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
     private List<Track> currentlyDisplayedTracks = new ArrayList<>();
     private PlaylistDialog playlistDialog;
     private AlertDialog analysisDialog;
-    private BottomOptions bottomOptions;
     private SortingOrder currentSortOrder = SortingOrder.MOST_RECENT;
     private String currentPlaylistName = ALL_TRACKS_PLAYLIST_NAME;
     private ProgressBar updateProgressBar;
@@ -96,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         database = AppDatabase.getDatabase(this);
-        musicUtility = new MusicUtility(this, database, this::updateBottomTitle, this::updatePlayButtonIcon);
+        musicUtility = new MusicUtility(this, this::updateBottomTitle, this::updatePlayButtonIcon);
 
         RecyclerView musicList = findViewById(R.id.musicList);
         bottomPlay = findViewById(R.id.bottom_play);
@@ -171,8 +170,20 @@ public class MainActivity extends AppCompatActivity {
         // The track is just the parameter of the function 'onItemClick'
         OnItemClickListener itemClickListener = track -> {
             bottomTitle.setText(track.title);
-            musicUtility.playTrack(track);
+
+            // Find where this track is in the current list
+            int startIndex = currentlyDisplayedTracks.indexOf(track);
+            if (startIndex == -1) startIndex = 0;
+
+            // Pass the whole list and the starting index!
+            musicUtility.playQueue(currentlyDisplayedTracks, startIndex);
         };
+
+        ImageButton btnPrevious = findViewById(R.id.bottom_previous);
+        ImageButton btnNext = findViewById(R.id.bottom_next);
+
+        btnPrevious.setOnClickListener(v -> musicUtility.skipToPrevious());
+        btnNext.setOnClickListener(v -> musicUtility.skipToNext());
 
         trackAdapter = new TrackAdapter(
                 this,
@@ -227,10 +238,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupUI() {
-
         initializeAnalysisStatusDialog();
 
-        bottomOptions = new BottomOptions(this, musicUtility);
+        BottomOptions bottomOptions = new BottomOptions(this, musicUtility);
         playlistDialog = new PlaylistDialog(this, database, this::loadAndShowPlaylist);
         bottomPlay.setOnClickListener(v -> handlePlayPauseClick());
 
@@ -406,7 +416,6 @@ public class MainActivity extends AppCompatActivity {
     private void loadAndShowPlaylist(String playlistName) {
         musicUtility.stopAndCancel();
         currentPlaylistName = playlistName;
-        bottomOptions.setPlaylistName(playlistName);
         trackAdapter.setCurrentPlaylistName(playlistName);
 
         // Save the current playlist as the last Playlist

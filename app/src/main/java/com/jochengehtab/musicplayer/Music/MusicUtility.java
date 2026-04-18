@@ -7,21 +7,15 @@ import android.os.Looper;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 import android.widget.Toast;
 
-import com.jochengehtab.musicplayer.Data.AppDatabase;
-import com.jochengehtab.musicplayer.Data.PlaylistWithTracks;
 import com.jochengehtab.musicplayer.Data.Track;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -31,72 +25,58 @@ public class MusicUtility {
     private boolean loopEnabled = true;
     private boolean mixEnabled = false;
     private final Context context;
-    private final AppDatabase database;
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
     private final MusicRecommendationEngine musicRecommendationEngine = new MusicRecommendationEngine();
     private final Consumer<String> updateBottomTitle;
     private final Consumer<Boolean> updateBottomPlayIcon;
     private final List<Track> playQueue = new ArrayList<>();
     private final LinkedList<Long> recentHistory = new LinkedList<>();
+    private final LinkedList<Integer> playbackHistory = new LinkedList<>();
+    private PlayingMode playingMode = PlayingMode.FORWARD_THROW_PLAYLIST;
 
-    public MusicUtility(Context context, AppDatabase database, Consumer<String> updateBottomTitle, Consumer<Boolean> updateBottomPlayIcon) {
+    public MusicUtility(Context context, Consumer<String> updateBottomTitle, Consumer<Boolean> updateBottomPlayIcon) {
         this.context = context;
-        this.database = database;
         this.updateBottomTitle = updateBottomTitle;
         this.updateBottomPlayIcon = updateBottomPlayIcon;
         initMediaSession();
     }
 
-    private void initMediaSession() {
-        mediaSession = new MediaSessionCompat(context, "MusicUtilitySession");
+    public void playQueue(List<Track> playlist, int startIndex) {
+        playbackHistory.clear();
+        playQueue.clear();
+        playQueue.addAll(playlist);
+        this.currentIndex = startIndex;
+
+        playCurrentQueueItem();
+    }
+
+    public void skipToPrevious() {
+        // Stop any pending auto-next timers
+        handler.removeCallbacksAndMessages(null);
+
+        final int playbackHistorySize = playbackHistory.size();
+        if (playbackHistorySize > 1) {
+            playbackHistory.removeLast();
+            // Get previous song and remove it so playCurrentQueueItem can re-add it cleanly
+            currentIndex = playbackHistory.removeLast();
+        } else if (currentIndex > 0) {
+            currentIndex--;
+        }
         
-        mediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override
-            public void onPlay() {
-                resume();
-            }
+        if (!playQueue.isEmpty()) playCurrentQueueItem();
+    }
 
-            @Override
-            public void onPause() {
-                pause();
-            }
+    public void skipToNext() {
+        // Stop current handler to prevent the scheduled stop from firing later
+        handler.removeCallbacksAndMessages(null);
+        if (playQueue.size() > 1 && currentIndex + 1 < playQueue.size()) {
+            currentIndex++;
+            playCurrentQueueItem();
+        }
 
-            @Override
-            public void onSkipToNext() {
-                // Stop current handler to prevent the scheduled stop from firing later
-                handler.removeCallbacksAndMessages(null);
-
-                if (isInitialized() && mediaPlayer.isPlaying()) {
-                    mediaPlayer.pause();
-                }
-
-                updateBottomPlayIcon.accept(false);
-
-                // Force next song logic
-                findAndPlayNextSong(true);
-            }
-
-            @Override
-            public void onSkipToPrevious() {
-                // Stop any pending auto-next timers
-                handler.removeCallbacksAndMessages(null);
-
-                // Logic: Actually go to previous track
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    playCurrentQueueItem();
-                } else {
-                    // If we are at the very first song (index 0), just restart it
-                    playCurrentQueueItem();
-                }
-            }
-        });
-
-        mediaSession.setActive(true);
     }
 
     public void playTrack(Track track, long... timespan) {
@@ -106,22 +86,7 @@ public class MusicUtility {
             mediaPlayer.reset();
         }
 
-        StringBuilder stringBuilder = new StringBuilder();
-        for (Track elemnt : playQueue) {
-            stringBuilder.append(elemnt.title);
-            stringBuilder.append("; ");
-        }
-        Log.i("Play Queue", String.valueOf(stringBuilder));
-
-        updateMediaSessionState(PlaybackStateCompat.STATE_PLAYING);
-
-        // Update Metadata
-        MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.title)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
-                .build();
-        mediaSession.setMetadata(metadata);
+        handleMediaMetaData(track);
 
         addToHistory(track.id);
         cancelToken.set(false);
@@ -150,66 +115,27 @@ public class MusicUtility {
         updateBottomPlayIcon.accept(true);
     }
 
-    private synchronized void playCurrentQueueItem(long... timespan) {
-        if (cancelToken.get()) return;
+    private void handleMediaMetaData(Track track) {
+        updateMediaSessionState(PlaybackStateCompat.STATE_PLAYING);
 
-        Track track;
-        if (loopEnabled) {
-            track = mediaPlayer.getCurrentTrack();
-        } else {
-            track = playQueue.get(currentIndex);
-            updateBottomTitle.accept(track.title);
+        // Update Metadata
+        MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
+                .build();
+        mediaSession.setMetadata(metadata);
+    }
+
+    private synchronized void playCurrentQueueItem(long... timespan) {
+        Track track = playQueue.get(currentIndex);
+        updateBottomTitle.accept(track.title);
+        if (currentIndex + 1 < playQueue.size()) playbackHistory.add(currentIndex);
+        if (!loopEnabled) {
+            track = musicRecommendationEngine.findNextSong(playQueue.get(currentIndex), playQueue, recentHistory);
+            playQueue.add(track);
         }
         playTrack(track, timespan);
-    }
-
-    public void handleLooping() {
-        loopEnabled = true;
-    }
-
-    public void handleMix(String playListName) {
-        cancelToken.set(false);
-        loopEnabled = false;
-        if (isPlaying()) {
-            mixEnabled = true;
-            playQueue.clear();
-            playQueue.add(mediaPlayer.getCurrentTrack());
-            // Since the queue only has one item
-            currentIndex = 0;
-            findAndPlayNextSong(false);
-        } else if (!playQueue.isEmpty()) {
-            Collections.shuffle(playQueue);
-            currentIndex = 0;
-            playCurrentQueueItem();
-        } else {
-            executor.execute(() -> {
-                PlaylistWithTracks playlistWithTracks = database.playlistDao().getPlaylistWithTracks(playListName);
-                if (playlistWithTracks != null && !playlistWithTracks.tracks.isEmpty()) {
-                    List<Track> tracks = playlistWithTracks.tracks;
-                    Collections.shuffle(tracks);
-                    handler.post(() -> {
-                        playQueue.addAll(tracks);
-                        currentIndex = 0;
-                        playCurrentQueueItem();
-                    });
-                }
-            });
-        }
-    }
-
-    private void updateMediaSessionState(int state) {
-        if (mediaSession == null) return;
-
-        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder()
-                .setActions(
-                        PlaybackStateCompat.ACTION_PLAY |
-                                PlaybackStateCompat.ACTION_PAUSE |
-                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
-                                PlaybackStateCompat.ACTION_PLAY_PAUSE
-                );
-
-        stateBuilder.setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f);
-        mediaSession.setPlaybackState(stateBuilder.build());
     }
 
     private void scheduleStop(long delayMs, MediaPlayer targetMp) {
@@ -221,45 +147,12 @@ public class MusicUtility {
             if (mediaPlayer == targetMp) {
                 targetMp.pause();
                 updateBottomPlayIcon.accept(false);
-                if (loopEnabled) {
-                    // Replay same song
-                    playCurrentQueueItem();
-                } else {
-                    findAndPlayNextSong(true);
+                if (!loopEnabled) {
+                    currentIndex++;
                 }
+                playCurrentQueueItem();
             }
         }, delayMs);
-    }
-
-    /**
-     * @param playImmediately
-     *   true = Normal behavior (End of song -> Play next).
-     *   false = Mix start behavior (Just add to queue, don't stop current song).
-     */
-    private void findAndPlayNextSong(boolean playImmediately) {
-        if (playQueue.isEmpty()) return;
-
-        // Create a copy of the history to pass to the thread safely
-        List<Long> historySnapshot = new ArrayList<>(recentHistory);
-
-        executor.execute(() -> {
-            List<Track> allTracks = database.trackDao().getAllTracks();
-
-            Track nextTrack = musicRecommendationEngine.findNextSong(mediaPlayer.getCurrentTrack(), allTracks, historySnapshot);
-
-            handler.post(() -> {
-                if (nextTrack != null) {
-                    playQueue.add(nextTrack);
-                }
-
-                // Only increment and play if requested.
-                // Otherwise, we just successfully buffered the next song.
-                if (playImmediately) {
-                    currentIndex++;
-                    playCurrentQueueItem();
-                }
-            });
-        });
     }
 
     public synchronized void stopAndCancel() {
@@ -312,11 +205,7 @@ public class MusicUtility {
             scheduleStop(remainingTime, mediaPlayer);
             updateBottomPlayIcon.accept(true);
         } else {
-            if (loopEnabled) {
-                playCurrentQueueItem();
-            } else {
-                findAndPlayNextSong(true);
-            }
+            playCurrentQueueItem();
         }
 
         // Update Session State
@@ -338,6 +227,57 @@ public class MusicUtility {
         if (recentHistory.size() > HISTORY_SIZE) {
             recentHistory.removeFirst(); // Remove oldest
         }
+    }
+
+    public void handleMix() {
+        loopEnabled = false;
+    }
+
+    public void handleLooping() {
+        loopEnabled = true;
+    }
+
+    private void initMediaSession() {
+        mediaSession = new MediaSessionCompat(context, "MusicUtilitySession");
+
+        mediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                resume();
+            }
+
+            @Override
+            public void onPause() {
+                pause();
+            }
+
+            @Override
+            public void onSkipToNext() {
+                skipToNext();
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                skipToPrevious();
+            }
+        });
+
+        mediaSession.setActive(true);
+    }
+
+    private void updateMediaSessionState(int state) {
+        if (mediaSession == null) return;
+
+        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder()
+                .setActions(
+                        PlaybackStateCompat.ACTION_PLAY |
+                                PlaybackStateCompat.ACTION_PAUSE |
+                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                                PlaybackStateCompat.ACTION_PLAY_PAUSE
+                );
+
+        stateBuilder.setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+        mediaSession.setPlaybackState(stateBuilder.build());
     }
 
     public boolean isPlaying() {

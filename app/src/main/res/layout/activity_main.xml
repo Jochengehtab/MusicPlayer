@@ -110,21 +110,45 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+        <!-- Previous Button -->
+        <ImageButton
+            android:id="@+id/bottom_previous"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/previous_track"
+            android:src="@drawable/ic_skip_previous_white_24dp"
+            app:tint="@color/white" />
+
+        <!-- Play Button -->
         <ImageButton
             android:id="@+id/bottom_play"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/play"
             android:src="@drawable/ic_play_arrow_white_24dp"
             app:tint="@color/white" />
 
+        <!-- Next Button -->
+        <ImageButton
+            android:id="@+id/bottom_next"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/next_track"
+            android:src="@drawable/ic_skip_next_white_24dp"
+            app:tint="@color/white" />
+
+        <!-- Title -->
         <TextView
             android:id="@+id/bottom_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
@@ -132,11 +156,13 @@
             android:textColor="@color/white"
             android:textSize="16sp" />
 
+        <!-- Options Menu -->
         <ImageButton
             android:id="@+id/bottom_options"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_marginEnd="16dp"
+            android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/options"
             android:src="@drawable/ic_more_vert_white_24dp"

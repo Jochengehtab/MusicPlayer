@@ -10,7 +10,6 @@ import com.jochengehtab.musicplayer.R;
 public class BottomOptions {
     private final Context context;
     private final MusicUtility musicUtility;
-    private String playListName;
 
     public BottomOptions(Context context, MusicUtility musicUtility) {
         this.context = context;
@@ -38,7 +37,7 @@ public class BottomOptions {
                     return true;
                 }
                 else if (id == R.id.action_mix) {
-                    musicUtility.handleMix(playListName);
+                    musicUtility.handleMix();
                     return true;
                 }
                 return false;
@@ -46,9 +45,5 @@ public class BottomOptions {
 
             popup.show();
         });
-    }
-
-    public void setPlaylistName(String playlistName) {
-        this.playListName = playlistName;
     }
 }
