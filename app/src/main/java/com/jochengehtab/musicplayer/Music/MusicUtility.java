@@ -58,14 +58,14 @@ public class MusicUtility {
         handler.removeCallbacksAndMessages(null);
 
         final int playbackHistorySize = playbackHistory.size();
-        if (playbackHistorySize > 1) {
+        if (currentIndex > 0) {
+            currentIndex--;
+        } else if (playbackHistorySize > 1) {
             playbackHistory.removeLast();
             // Get previous song and remove it so playCurrentQueueItem can re-add it cleanly
             currentIndex = playbackHistory.removeLast();
-        } else if (currentIndex > 0) {
-            currentIndex--;
         }
-        
+
         if (!playQueue.isEmpty()) playCurrentQueueItem();
     }
 
@@ -76,7 +76,6 @@ public class MusicUtility {
             currentIndex++;
             playCurrentQueueItem();
         }
-
     }
 
     public void playTrack(Track track, long... timespan) {
@@ -131,6 +130,7 @@ public class MusicUtility {
         Track track = playQueue.get(currentIndex);
         updateBottomTitle.accept(track.title);
         if (currentIndex + 1 < playQueue.size()) playbackHistory.add(currentIndex);
+
         if (!loopEnabled) {
             track = musicRecommendationEngine.findNextSong(playQueue.get(currentIndex), playQueue, recentHistory);
             playQueue.add(track);
