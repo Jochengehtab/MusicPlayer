@@ -60,10 +60,13 @@ public class MusicUtility {
         final int playbackHistorySize = playbackHistory.size();
         if (currentIndex > 0) {
             currentIndex--;
-        } else if (playbackHistorySize > 1) {
+        } else if (playbackHistorySize > 1 && currentIndex != 0) {
             playbackHistory.removeLast();
             // Get previous song and remove it so playCurrentQueueItem can re-add it cleanly
             currentIndex = playbackHistory.removeLast();
+        } else {
+            // If we are here then we must be at the start of the playlist
+            currentIndex = playQueue.size() - 1;
         }
 
         if (!playQueue.isEmpty()) playCurrentQueueItem();
@@ -74,6 +77,14 @@ public class MusicUtility {
         handler.removeCallbacksAndMessages(null);
         if (playQueue.size() > 1 && currentIndex + 1 < playQueue.size()) {
             currentIndex++;
+            playCurrentQueueItem();
+            return;
+        }
+
+        // Check if we are at the end of the playlist
+        // If that is the case we start at the beginning of the play queue
+        if (currentIndex == playQueue.size() - 1) {
+            currentIndex = 0;
             playCurrentQueueItem();
         }
     }
